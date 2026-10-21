@@ -14,8 +14,8 @@ conda activate frog
 conda install -c conda-forge numpy scipy matplotlib pandas seaborn periodictable ase rdkit mdtraj pyyaml -y
 
 # 3. FROG itself, from a clone of the repository
-git clone https://github.com/andrea-pellegrini/paclab.git
-cd FROG
+git clone https://github.com/SynLab-OCSA/frog.git
+cd frog
 pip install -e .
 ```
 
@@ -27,7 +27,7 @@ immediately, without reinstalling.
 Without a clone you can also install directly:
 
 ```bash
-pip install "git+https://github.com/andrea-pellegrini/paclab.git"
+pip install "git+https://github.com/SynLab-OCSA/frog.git"
 ```
 
 ## 2. Check that it works
