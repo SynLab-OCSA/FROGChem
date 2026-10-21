@@ -1,0 +1,56 @@
+intro: |
+  This example uses a CAM-B3LYP/def2-TZVPP TD-DFT job from `files/` on a chiral organoboron compound
+  (C26H19BBrN). The job has 50 singlet roots, 50 triplet roots and spin-orbit coupling. A second, very
+  small job (water, 10 roots, with MO coefficients) shows the charge-transfer analysis.
+data:
+  - path: files/1_p8_orca.out
+    about: ORCA, CAM-B3LYP D4 def2-TZVPP CPCM(hexane), `%tddft nroots 50 TDA false dosoc true end`, PrintMOs PrintBasis
+  - path: files/tddft_mos.out
+    about: ORCA, B3LYP def2-TZVPP, `%tddft NRoots 10 end`, PrintMOs PrintBasis, H2O
+steps:
+  - text: |
+      **1. Excited states, UV-Vis and ECD spectra.** The window is set to 3–6.5 eV (190–413 nm), which covers
+      the singlets shown in the table. The bands are a bit narrower than the default (`--fwhm 0.25`). Only
+      transitions with weight above 0.3 are listed. The table has 100 rows (50 S + 50 T), so only the first
+      ones are shown here.
+    cmd: frog-tddft files/1_p8_orca.out -t 0.3 --uv --ecd --fwhm 0.25 --x-start 3 --x-end 6.5 --dpi 150 --out-dir spectra
+    output: head:16
+    images:
+      - path: spectra/1_p8_orca_UV.png
+        caption: UV-Vis spectrum (normalised), Gaussian FWHM 0.25 eV.
+        width: 70%
+      - path: spectra/1_p8_orca_ECD.png
+        caption: ECD spectrum (normalised, bands weighted by E·R).
+        width: 70%
+    after: |
+      * S1 (3.669 eV ≈ 338 nm, f 0.477, `H->L (0.82)`) is the lowest band of the UV spectrum. S2
+        (4.100 eV, f 0.181) gives the weaker band near 300 nm. The strongest absorptions lie further up in
+        energy, where many bright states overlap.
+      * In the ECD the low-energy states are almost silent (R ≈ 1). The first strong couplet comes from S8
+        (R +177.931) and S9 (R −161.150), only 0.03 eV apart: the two signed bands partly cancel. To assign an
+        absolute configuration, compare this +/− pattern with the experimental spectrum, after a `--shift`
+        if needed.
+      * S7 and S8 have an empty *Population* column: no single excitation has a weight above `-t 0.3`. These
+        states are mixtures; lower `-t` to see their components.
+  - text: |
+      **2. Spin-orbit couplings between selected states.** The full SOC matrix of this job is 51 × 50. With
+      `--soc-states` only S0, S1 and T1–T4 are kept. Only the SOC table, at the end of the output, is shown.
+    cmd: frog-tddft files/1_p8_orca.out --soc-states S0 S1 T1-T4
+    output: tail:8
+    after: |
+      The couplings are a few cm⁻¹: 0.414–1.395 cm⁻¹ between S1 and T1–T4, and up to 5.329 cm⁻¹ between the
+      ground state and T4. The Br atom is present, but these values are still in the range typical of organic
+      molecules.
+  - text: |
+      **3. Charge-transfer distance (D_CT) of the first three states of water** on a 40 × 40 × 40 grid, with
+      a ChimeraX script for the centroids. The excited-state table printed first is omitted here.
+    cmd: frog-tddft files/tddft_mos.out --dct --dct-states S1-S3 --voxels 40 --chimerax --out-dir dct
+    output: tail:16
+    show_files:
+      - path: dct/tddft_mos_dct.cxc
+    after: |
+      All three states are *Local Exc.*: Δr is 0.86, 0.89 and 1.05 Å, all below the 1.5 Å threshold. The
+      centroids in the `.cxc` file show that the electron goes from the O side (red, negative Δρ, y between −0.354 and
+      −0.558 Å) towards the H atoms (blue, y between 0.493 and 0.533 Å). Load the molecule in ChimeraX and `open dct/tddft_mos_dct.cxc`
+      to draw the two spheres. The three `*_delta_rho.cube` files can be drawn at ±0.002 e/bohr³ or combined
+      with `frog-cube`.

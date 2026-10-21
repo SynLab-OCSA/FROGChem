@@ -1,0 +1,9 @@
+# Twin of gaussian/g06_h2o_nbo.gjf: H2O NBO / NPA analysis
+! B3LYP/G def2-SVP NBO NoRI TightSCF DefGrid3 PrintBasis PrintMOs
+%pal nprocs 40 end
+%maxcore 1500
+* xyz 0 1
+ O      0.001000    -0.374000     0.000000
+ H     -0.766000     0.185000     0.000000
+ H      0.765000     0.189000     0.000000
+*

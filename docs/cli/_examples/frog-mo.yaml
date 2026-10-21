@@ -1,0 +1,51 @@
+intro: |
+  ORCA/Gaussian twins from the reference set, all run with the MO coefficients printed (ORCA `! PrintBasis
+  PrintMOs`; Gaussian `pop=full iop(3/33=1) iop(6/80=1) gfinput`): water (closed shell, pure d/f
+  functions), TiCl₄ (a transition metal with d functions) and the methyl radical (UKS, α and β orbitals).
+data:
+  - path: tests/data/gaussian_ref/orca/g01_h2o_pure.out
+    about: ORCA, B3LYP/def2-TZVPP, H₂O
+  - path: tests/data/gaussian_ref/gaussian/g01_h2o_pure.log
+    about: Gaussian 16 twin (5D 7F)
+  - path: tests/data/gaussian_ref/orca/g04_ticl4.out
+    about: ORCA, B3LYP/def2-TZVP, TiCl₄
+  - path: tests/data/gaussian_ref/orca/g03_ch3_uks.out
+    about: ORCA, UKS B3LYP/def2-TZVP, CH₃• doublet (Gaussian twin `gaussian/g03_ch3_uks.log`)
+steps:
+  - text: |
+      **1. Frontier orbitals of water, ORCA vs Gaussian.** `-b 2` shows HOMO−2 … HOMO+2. With only 3 atoms,
+      every atom/shell column is shown.
+    cmd: frog-mo tests/data/gaussian_ref/orca/g01_h2o_pure.out tests/data/gaussian_ref/gaussian/g01_h2o_pure.log -b 2
+    after: |
+      * MO 4 is the HOMO (Occ 2.00): 99.36 % O p, with no H contribution. This is the out-of-plane oxygen lone pair.
+      * MO 5, the LUMO (+0.44 eV), is 47.90 % O s and 23.3 % on each H s: the antibonding σ*(O–H).
+      * MO 3 mixes O s (25.20 %) and O p (63.47 %), the in-plane lone pair with some O–H bonding.
+      * The two programs agree to ±0.01 %: the Gaussian 5D/7F basis functions are mapped to the same s/p/d/f
+        shells as ORCA's.
+  - text: |
+      **2. Metal d character in TiCl₄, with a heatmap.** `--elements Ti --orbital-type d` keeps only the Ti
+      d functions, and `--plot` draws them for the MOs in the window (the command is run inside the data folder
+      to keep the table title short).
+    cmd: cd tests/data/gaussian_ref/orca && frog-mo g04_ticl4.out --elements Ti --orbital-type d -b 5 --plot --dpi 150 --out-dir mo
+    images:
+      - path: tests/data/gaussian_ref/orca/mo/g04_ticl4_mo.png
+        caption: Ti d contribution (%) of each basis function to MOs 39–49 of TiCl₄. The HOMO (MO 44) is boxed
+          in cyan. Each d label repeats once per contracted d function of the def2-TZVP basis.
+        width: 85%
+    after: |
+      * The occupied MOs 42–44 (HOMO, −9.34 eV) have no Ti d (0.00 %): they are purely ligand (Cl) orbitals.
+      * The LUMO pair MOs 45/46 (−4.01 eV) is 76.66 % Ti d, and MOs 47–49 (−3.30 eV) 60.15 % Ti d. These are the
+        empty d sets of the d⁰ metal split by the tetrahedral field (e below t₂).
+      * In the heatmap the e pair (45/46) is built only from d$_{z^2}$ and d$_{x^2-y^2}$ functions, and the t₂ set
+        from one function each: d$_{xy}$ (47), d$_{yz}$ (48) and d$_{xz}$ (49). The pattern repeats over the
+        contracted d functions of the basis.
+  - text: |
+      **3. Open shell: β orbitals.** `-b 1 --beta` on both programs.
+    cmd: frog-mo tests/data/gaussian_ref/orca/g03_ch3_uks.out tests/data/gaussian_ref/gaussian/g03_ch3_uks.log -b 1 --beta -q
+    after: |
+      * The window is centred on the **α** HOMO (MO 4, the singly occupied C p orbital). In the β set MO 4 is
+        empty (Occ 0.00, −2.07 eV, 99.62 % C p): it is the β partner of the unpaired electron, and MO 3 is the
+        β HOMO.
+      * MO 3 is one of a degenerate pair of C–H bonding orbitals. ORCA and Gaussian return a different
+        (equally valid) rotation within the pair, so the per-H percentages differ (34.24/8.48/8.64 vs
+        0.00/25.68/25.68). The shell totals (51.36 % s, 48.55 / 48.54 % p) agree.

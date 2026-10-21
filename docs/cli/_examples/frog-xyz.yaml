@@ -1,0 +1,23 @@
+intro: |
+  The final geometry of an ORCA transition-state optimisation and of a Gaussian single point, written into a
+  separate folder with `--out-dir`.
+data:
+  - path: files/orb.out
+    about: ORCA, B3LYP-D4/def2-TZVP OptTS Freq, 37 atoms
+  - path: tests/data/gaussian_ref/gaussian/g04_ticl4.log
+    about: Gaussian 16, B3LYP/def2-TZVP single point, TiCl₄
+steps:
+  - text: |
+      **1. One XYZ per input.**
+    cmd: frog-xyz files/orb.out tests/data/gaussian_ref/gaussian/g04_ticl4.log --out-dir xyz
+    show_files:
+      - path: xyz/g04_ticl4_final.xyz
+      - path: xyz/orb_final.xyz
+        lines: 6
+    after: |
+      * The Gaussian geometry is taken from the input orientation: Ti at the origin and the four Cl at
+        (±1.252850, ±1.252850, ±1.252850) Å, a regular tetrahedron.
+      * The comment line is always `FROG formatted`. Charge and multiplicity are not stored, so write
+        them into the next input yourself. `orb.out` is an anion (charge −1).
+      * Without `--out-dir` the files go next to the inputs (`files/orb_final.xyz`). ORCA's own `orb.xyz` is
+        not touched, because of the `_PAC` suffix.

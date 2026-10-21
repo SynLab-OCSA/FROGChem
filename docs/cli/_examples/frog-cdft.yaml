@@ -1,0 +1,41 @@
+intro: |
+  Three small molecules, each computed with the same input in ORCA and in Gaussian (B3LYP, def2-TZVPP for
+  water and def2-TZVP for TiCl₄ and the methyl radical; tight SCF). The test set lets you check that both
+  parsers give the same orbital energies, including the open-shell UKS case. A second step uses two ORCA
+  r²SCAN-3c optimisations from `files/`.
+data:
+  - path: tests/data/gaussian_ref/orca/g01_h2o_pure.out
+    about: ORCA, B3LYP/def2-TZVPP single point, H₂O (closed shell)
+  - path: tests/data/gaussian_ref/gaussian/g01_h2o_pure.log
+    about: Gaussian 16 twin of the same job
+  - path: tests/data/gaussian_ref/orca/g04_ticl4.out
+    about: ORCA, B3LYP/def2-TZVP single point, TiCl₄ (Gaussian twin `gaussian/g04_ticl4.log`)
+  - path: tests/data/gaussian_ref/orca/g03_ch3_uks.out
+    about: ORCA, UKS B3LYP/def2-TZVP, CH₃• doublet (Gaussian twin `gaussian/g03_ch3_uks.log`)
+  - path: files/opt.out
+    about: ORCA, r²SCAN-3c OptTS Freq, Ru complex
+  - path: files/test.out
+    about: ORCA, r²SCAN-3c Opt Freq, C₉H₈NS
+steps:
+  - text: |
+      **1. ORCA and Gaussian, closed and open shell.** One row per file, in the order given.
+    cmd: frog-cdft tests/data/gaussian_ref/orca/g01_h2o_pure.out tests/data/gaussian_ref/gaussian/g01_h2o_pure.log tests/data/gaussian_ref/orca/g04_ticl4.out tests/data/gaussian_ref/gaussian/g04_ticl4.log tests/data/gaussian_ref/orca/g03_ch3_uks.out tests/data/gaussian_ref/gaussian/g03_ch3_uks.log
+    after: |
+      * Each ORCA/Gaussian pair gives identical numbers, so the two parsers read the same orbital energies.
+      * Water has the largest gap (η = 9.076 eV) and a positive LUMO (+0.441 eV): it is hard and a poor
+        electrophile (ω = 0.925 eV).
+      * TiCl₄ has the lowest LUMO (−4.011 eV, the empty Ti 3d set; see the `frog-mo` example) and is
+        the best electrophile of the three (ω = 4.180 eV). This is the expected order for a Lewis-acidic d⁰ metal
+        halide.
+      * CH₃• is open shell. The HOMO (−6.447 eV) is the singly occupied α orbital and the LUMO (−2.069 eV) is
+        the empty β orbital on the same carbon, so the "gap" of 4.378 eV is an α/β difference and not a
+        closed-shell HOMO–LUMO gap. Compare radicals only with other radicals.
+      * The three molecules use two basis sets (def2-TZVPP, def2-TZVP). For a real ranking, use one level
+        of theory for the whole series.
+  - text: |
+      **2. Export for a spreadsheet.** `--format csv` prints full precision and `-q` hides the progress
+      messages. Add `--table-file cdft.csv` to write the table to a file.
+    cmd: frog-cdft files/opt.out files/test.out --format csv -q
+    after: |
+      With the same functional (r²SCAN-3c), the Ru complex in `opt.out` is much more electrophilic
+      (ω ≈ 4.04 eV, η ≈ 2.09 eV) than the organic molecule in `test.out` (ω ≈ 0.85 eV, η ≈ 3.27 eV).

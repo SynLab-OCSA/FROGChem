@@ -1,0 +1,12 @@
+%chk=g02_h2o_cart.chk
+%mem=72GB
+%nprocshared=40
+#p B3LYP/def2TZVPP 6D 10F nosymm scf=tight pop=full iop(3/33=1) iop(6/80=1) gfinput
+
+H2O closed shell, Cartesian 6D/10F functions (no ORCA twin)
+
+0 1
+ O      0.001000    -0.374000     0.000000
+ H     -0.766000     0.185000     0.000000
+ H      0.765000     0.189000     0.000000
+

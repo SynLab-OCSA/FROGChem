@@ -1,0 +1,62 @@
+{% set name = "frogchem" %}
+{% set version = "0.1.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  # sha256 will be updated upon PyPI release
+  # sha256: ...
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python >=3.10
+    - setuptools >=61.0
+    - pip
+  run:
+    - python >=3.10
+    - numpy >=1.25.2
+    - scipy
+    - matplotlib-base
+    - inquirerpy >=0.3.4
+    - seaborn
+    - periodictable
+    - pandas
+    - rich
+    - colour-science
+    - ase >=3.22.0
+    - rdkit
+    - mdtraj
+
+test:
+  imports:
+    - frogchem
+    - frogchem.orca_parser
+    - frogchem.gaussian_parser
+    - frogchem.thermo
+    - frogchem.io
+  commands:
+    - frog --help
+    - frog-rmsd --help
+    - frog-rrho --help
+    - frog-profile --help
+    - frog-tddft --help
+
+about:
+  home: https://github.com/andrea-pellegrini/paclab
+  summary: "FROG — Find, Refine, Organize and Graph"
+  license: MIT
+  license_file: LICENSE
+  doc_url: https://andrea-pellegrini.github.io/paclab/
+  dev_url: https://github.com/andrea-pellegrini/paclab
+
+extra:
+  recipe-maintainers:
+    - andrea-pellegrini

@@ -1,0 +1,30 @@
+intro: |
+  Splitting the 18-conformer Ag complex ensemble into one folder per conformer, and merging two small
+  XYZ files back into one.
+data:
+- path: files/ensemble.xyz
+  about: 18 conformers of an Ag complex, 168 atoms (comment line = energy)
+- path: files/multi_NP.xyz
+  about: one 4-atom test structure
+- path: files/multi_PN.xyz
+  about: one 4-atom test structure
+steps:
+- text: |
+    **1. Split.**
+  cmd: frog-split files/ensemble.xyz
+  output: head:6
+  show_files:
+  - path: files/ensemble_split/conf_1/geom.xyz
+    lines: 3
+  after: |
+    18 folders `conf_1` … `conf_18` are written to `files/ensemble_split/` (only the first lines are
+    shown). Numbering starts at 1. Each `geom.xyz` keeps the original comment line, here the energy
+    −257.40634594 of the first conformer. Run it again and the existing folders are skipped; add `-f`
+    to overwrite them.
+- text: |
+    **2. Merge.**
+  cmd: frog-split --merge files/multi_PN.xyz files/multi_NP.xyz -o merged.xyz
+  show_files:
+  - path: merged.xyz
+  after: |
+    The 2 structures are concatenated in the order of the command line, with their own comment lines.

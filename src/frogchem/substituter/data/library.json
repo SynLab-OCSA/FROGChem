@@ -1,0 +1,1064 @@
+{
+    "methyl": {
+        "name": "methyl",
+        "filename": "methyl.xyz",
+        "frag_pair": [
+            1,
+            0
+        ],
+        "description": "Auto-registered via substitute_fragment",
+        "category": "general",
+        "tags": [],
+        "smiles": ""
+    },
+    "p-toluil": {
+        "name": "p-toluil",
+        "filename": "p_tol.xyz",
+        "frag_pair": [
+            10,
+            4
+        ],
+        "description": "Auto-registered via substitute_fragment",
+        "category": "general",
+        "tags": [],
+        "smiles": ""
+    },
+    "frag": {
+        "name": "frag",
+        "filename": "frag.xyz",
+        "frag_pair": [
+            1,
+            0
+        ],
+        "description": "Auto-registered via substitute_fragment",
+        "category": "general",
+        "tags": [],
+        "smiles": ""
+    },
+    "fluoro": {
+        "name": "fluoro",
+        "filename": "fluoro.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Fluoro group (-F)",
+        "category": "halogens",
+        "tags": [
+            "halogen",
+            "ewg"
+        ],
+        "smiles": "*F"
+    },
+    "chloro": {
+        "name": "chloro",
+        "filename": "chloro.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Chloro group (-Cl)",
+        "category": "halogens",
+        "tags": [
+            "halogen",
+            "ewg"
+        ],
+        "smiles": "*Cl"
+    },
+    "bromo": {
+        "name": "bromo",
+        "filename": "bromo.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Bromo group (-Br)",
+        "category": "halogens",
+        "tags": [
+            "halogen",
+            "ewg"
+        ],
+        "smiles": "*Br"
+    },
+    "iodo": {
+        "name": "iodo",
+        "filename": "iodo.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Iodo group (-I)",
+        "category": "halogens",
+        "tags": [
+            "halogen"
+        ],
+        "smiles": "*I"
+    },
+    "ethyl": {
+        "name": "ethyl",
+        "filename": "ethyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Ethyl group (-Et)",
+        "category": "alkyls",
+        "tags": [
+            "alkyl",
+            "edg"
+        ],
+        "smiles": "*CC"
+    },
+    "n-propyl": {
+        "name": "n-propyl",
+        "filename": "n-propyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "n-Propyl group (-nPr)",
+        "category": "alkyls",
+        "tags": [
+            "alkyl"
+        ],
+        "smiles": "*CCC"
+    },
+    "isopropyl": {
+        "name": "isopropyl",
+        "filename": "isopropyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Isopropyl group (-iPr)",
+        "category": "alkyls",
+        "tags": [
+            "alkyl",
+            "bulky",
+            "edg"
+        ],
+        "smiles": "*C(C)C"
+    },
+    "cyclopropyl": {
+        "name": "cyclopropyl",
+        "filename": "cyclopropyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Cyclopropyl group (-cPr)",
+        "category": "alkyls",
+        "tags": [
+            "alkyl"
+        ],
+        "smiles": "*C1CC1"
+    },
+    "n-butyl": {
+        "name": "n-butyl",
+        "filename": "n-butyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "n-Butyl group (-nBu)",
+        "category": "alkyls",
+        "tags": [
+            "alkyl"
+        ],
+        "smiles": "*CCCC"
+    },
+    "isobutyl": {
+        "name": "isobutyl",
+        "filename": "isobutyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Isobutyl group (-iBu)",
+        "category": "alkyls",
+        "tags": [
+            "alkyl"
+        ],
+        "smiles": "*CC(C)C"
+    },
+    "sec-butyl": {
+        "name": "sec-butyl",
+        "filename": "sec-butyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "sec-Butyl group (-sBu)",
+        "category": "alkyls",
+        "tags": [
+            "alkyl"
+        ],
+        "smiles": "*C(C)CC"
+    },
+    "tert-butyl": {
+        "name": "tert-butyl",
+        "filename": "tert-butyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "tert-Butyl group (-tBu)",
+        "category": "alkyls",
+        "tags": [
+            "alkyl",
+            "bulky",
+            "edg"
+        ],
+        "smiles": "*C(C)(C)C"
+    },
+    "cyclohexyl": {
+        "name": "cyclohexyl",
+        "filename": "cyclohexyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Cyclohexyl group (-Cy)",
+        "category": "alkyls",
+        "tags": [
+            "alkyl",
+            "bulky"
+        ],
+        "smiles": "*C1CCCCC1"
+    },
+    "cyclopentyl": {
+        "name": "cyclopentyl",
+        "filename": "cyclopentyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Cyclopentyl group (-Cp)",
+        "category": "alkyls",
+        "tags": [
+            "alkyl"
+        ],
+        "smiles": "*C1CCCC1"
+    },
+    "adamantyl": {
+        "name": "adamantyl",
+        "filename": "adamantyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "1-Adamantyl group (-1-Ad)",
+        "category": "alkyls",
+        "tags": [
+            "alkyl",
+            "bulky"
+        ],
+        "smiles": "*C12CC3CC(CC(C3)C1)C2"
+    },
+    "trifluoromethyl": {
+        "name": "trifluoromethyl",
+        "filename": "trifluoromethyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Trifluoromethyl group (-CF3)",
+        "category": "haloalkyls",
+        "tags": [
+            "haloalkyl",
+            "ewg",
+            "fluorinated"
+        ],
+        "smiles": "*C(F)(F)F"
+    },
+    "difluoromethyl": {
+        "name": "difluoromethyl",
+        "filename": "difluoromethyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Difluoromethyl group (-CHF2)",
+        "category": "haloalkyls",
+        "tags": [
+            "haloalkyl",
+            "ewg",
+            "fluorinated"
+        ],
+        "smiles": "*C(F)F"
+    },
+    "trichloromethyl": {
+        "name": "trichloromethyl",
+        "filename": "trichloromethyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Trichloromethyl group (-CCl3)",
+        "category": "haloalkyls",
+        "tags": [
+            "haloalkyl",
+            "ewg"
+        ],
+        "smiles": "*C(Cl)(Cl)Cl"
+    },
+    "phenyl": {
+        "name": "phenyl",
+        "filename": "phenyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Phenyl group (-Ph)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "aromatic"
+        ],
+        "smiles": "*c1ccccc1"
+    },
+    "p-tolyl": {
+        "name": "p-tolyl",
+        "filename": "p-tolyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "p-Tolyl group (-4-Me-Ph)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "edg",
+            "para"
+        ],
+        "smiles": "*c1ccc(C)cc1"
+    },
+    "o-tolyl": {
+        "name": "o-tolyl",
+        "filename": "o-tolyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "o-Tolyl group (-2-Me-Ph)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "ortho",
+            "bulky"
+        ],
+        "smiles": "*c1ccccc1C"
+    },
+    "m-tolyl": {
+        "name": "m-tolyl",
+        "filename": "m-tolyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "m-Tolyl group (-3-Me-Ph)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "meta"
+        ],
+        "smiles": "*c1cccc(C)c1"
+    },
+    "xylyl": {
+        "name": "xylyl",
+        "filename": "xylyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "2,6-Xylyl group (-2,6-Me2-Ph)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "ortho",
+            "bulky",
+            "2,6-disubstituted"
+        ],
+        "smiles": "*c1c(C)cccc1C"
+    },
+    "mesityl": {
+        "name": "mesityl",
+        "filename": "mesityl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Mesityl group (-2,4,6-Me3-Ph)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "bulky"
+        ],
+        "smiles": "*c1c(C)cc(C)cc1C"
+    },
+    "Dipp": {
+        "name": "Dipp",
+        "filename": "Dipp.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "2,6-Diisopropylphenyl group (-Dipp)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "bulky",
+            "ligand",
+            "2,6-disubstituted"
+        ],
+        "smiles": "*c1c(C(C)C)cccc1C(C)C"
+    },
+    "p-anisyl": {
+        "name": "p-anisyl",
+        "filename": "p-anisyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "p-Anisyl group (-4-OMe-Ph)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "edg",
+            "para"
+        ],
+        "smiles": "*c1ccc(OC)cc1"
+    },
+    "p-fluorophenyl": {
+        "name": "p-fluorophenyl",
+        "filename": "p-fluorophenyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "4-Fluorophenyl group (-4-F-Ph)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "para",
+            "fluorinated"
+        ],
+        "smiles": "*c1ccc(F)cc1"
+    },
+    "p-chlorophenyl": {
+        "name": "p-chlorophenyl",
+        "filename": "p-chlorophenyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "4-Chlorophenyl group (-4-Cl-Ph)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "para"
+        ],
+        "smiles": "*c1ccc(Cl)cc1"
+    },
+    "p-bromophenyl": {
+        "name": "p-bromophenyl",
+        "filename": "p-bromophenyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "4-Bromophenyl group (-4-Br-Ph)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "para"
+        ],
+        "smiles": "*c1ccc(Br)cc1"
+    },
+    "p-CF3-Ph": {
+        "name": "p-CF3-Ph",
+        "filename": "p-CF3-Ph.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "4-Trifluoromethylphenyl group",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "ewg",
+            "para",
+            "fluorinated"
+        ],
+        "smiles": "*c1ccc(C(F)(F)F)cc1"
+    },
+    "p-cyanophenyl": {
+        "name": "p-cyanophenyl",
+        "filename": "p-cyanophenyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "4-Cyanophenyl group (-4-CN-Ph)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "ewg",
+            "para"
+        ],
+        "smiles": "*c1ccc(C#N)cc1"
+    },
+    "p-nitrophenyl": {
+        "name": "p-nitrophenyl",
+        "filename": "p-nitrophenyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "4-Nitrophenyl group (-4-NO2-Ph)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "ewg",
+            "para"
+        ],
+        "smiles": "*c1ccc([N+](=O)[O-])cc1"
+    },
+    "3,5-bis(CF3)phenyl": {
+        "name": "3,5-bis(CF3)phenyl",
+        "filename": "3,5-bis(CF3)phenyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "3,5-Bis(trifluoromethyl)phenyl (ArF)",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "ewg",
+            "bulky",
+            "fluorinated"
+        ],
+        "smiles": "*c1cc(C(F)(F)F)cc(C(F)(F)F)c1"
+    },
+    "1-naphthyl": {
+        "name": "1-naphthyl",
+        "filename": "1-naphthyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "1-Naphthyl group",
+        "category": "aryls",
+        "tags": [
+            "aryl",
+            "bulky"
+        ],
+        "smiles": "*c1cccc2ccccc12"
+    },
+    "2-naphthyl": {
+        "name": "2-naphthyl",
+        "filename": "2-naphthyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "2-Naphthyl group",
+        "category": "aryls",
+        "tags": [
+            "aryl"
+        ],
+        "smiles": "*c1ccc2ccccc2c1"
+    },
+    "2-pyridyl": {
+        "name": "2-pyridyl",
+        "filename": "2-pyridyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "2-Pyridyl group",
+        "category": "heteroaryls",
+        "tags": [
+            "heteroaryl",
+            "ligand",
+            "directing_group"
+        ],
+        "smiles": "*c1ccccn1"
+    },
+    "3-pyridyl": {
+        "name": "3-pyridyl",
+        "filename": "3-pyridyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "3-Pyridyl group",
+        "category": "heteroaryls",
+        "tags": [
+            "heteroaryl"
+        ],
+        "smiles": "*c1cccnc1"
+    },
+    "4-pyridyl": {
+        "name": "4-pyridyl",
+        "filename": "4-pyridyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "4-Pyridyl group",
+        "category": "heteroaryls",
+        "tags": [
+            "heteroaryl"
+        ],
+        "smiles": "*c1ccncc1"
+    },
+    "2-thienyl": {
+        "name": "2-thienyl",
+        "filename": "2-thienyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "2-Thienyl group",
+        "category": "heteroaryls",
+        "tags": [
+            "heteroaryl"
+        ],
+        "smiles": "*c1sccc1"
+    },
+    "2-furyl": {
+        "name": "2-furyl",
+        "filename": "2-furyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "2-Furyl group",
+        "category": "heteroaryls",
+        "tags": [
+            "heteroaryl"
+        ],
+        "smiles": "*c1occc1"
+    },
+    "hydroxy": {
+        "name": "hydroxy",
+        "filename": "hydroxy.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Hydroxy group (-OH)",
+        "category": "oxygen_sulfur",
+        "tags": [
+            "oxygen",
+            "edg",
+            "protic"
+        ],
+        "smiles": "*O"
+    },
+    "methoxy": {
+        "name": "methoxy",
+        "filename": "methoxy.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Methoxy group (-OMe)",
+        "category": "oxygen_sulfur",
+        "tags": [
+            "oxygen",
+            "edg"
+        ],
+        "smiles": "*OC"
+    },
+    "ethoxy": {
+        "name": "ethoxy",
+        "filename": "ethoxy.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Ethoxy group (-OEt)",
+        "category": "oxygen_sulfur",
+        "tags": [
+            "oxygen",
+            "edg"
+        ],
+        "smiles": "*OCC"
+    },
+    "isopropoxy": {
+        "name": "isopropoxy",
+        "filename": "isopropoxy.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Isopropoxy group (-OiPr)",
+        "category": "oxygen_sulfur",
+        "tags": [
+            "oxygen",
+            "edg"
+        ],
+        "smiles": "*OC(C)C"
+    },
+    "tert-butoxy": {
+        "name": "tert-butoxy",
+        "filename": "tert-butoxy.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "tert-Butoxy group (-OtBu)",
+        "category": "oxygen_sulfur",
+        "tags": [
+            "oxygen",
+            "bulky",
+            "edg"
+        ],
+        "smiles": "*OC(C)(C)C"
+    },
+    "trifluoromethoxy": {
+        "name": "trifluoromethoxy",
+        "filename": "trifluoromethoxy.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Trifluoromethoxy group (-OCF3)",
+        "category": "oxygen_sulfur",
+        "tags": [
+            "oxygen",
+            "ewg",
+            "fluorinated"
+        ],
+        "smiles": "*OC(F)(F)F"
+    },
+    "phenoxy": {
+        "name": "phenoxy",
+        "filename": "phenoxy.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Phenoxy group (-OPh)",
+        "category": "oxygen_sulfur",
+        "tags": [
+            "oxygen",
+            "aryl"
+        ],
+        "smiles": "*Oc1ccccc1"
+    },
+    "mercapto": {
+        "name": "mercapto",
+        "filename": "mercapto.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Mercapto / Thiol group (-SH)",
+        "category": "oxygen_sulfur",
+        "tags": [
+            "sulfur"
+        ],
+        "smiles": "*S"
+    },
+    "thiomethyl": {
+        "name": "thiomethyl",
+        "filename": "thiomethyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Thiomethyl group (-SMe)",
+        "category": "oxygen_sulfur",
+        "tags": [
+            "sulfur"
+        ],
+        "smiles": "*SC"
+    },
+    "amino": {
+        "name": "amino",
+        "filename": "amino.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Amino group (-NH2)",
+        "category": "nitrogen",
+        "tags": [
+            "nitrogen",
+            "edg",
+            "protic"
+        ],
+        "smiles": "*N"
+    },
+    "dimethylamino": {
+        "name": "dimethylamino",
+        "filename": "dimethylamino.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Dimethylamino group (-NMe2)",
+        "category": "nitrogen",
+        "tags": [
+            "nitrogen",
+            "edg"
+        ],
+        "smiles": "*N(C)C"
+    },
+    "diethylamino": {
+        "name": "diethylamino",
+        "filename": "diethylamino.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Diethylamino group (-NEt2)",
+        "category": "nitrogen",
+        "tags": [
+            "nitrogen",
+            "edg"
+        ],
+        "smiles": "*N(CC)CC"
+    },
+    "nitro": {
+        "name": "nitro",
+        "filename": "nitro.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Nitro group (-NO2)",
+        "category": "nitrogen",
+        "tags": [
+            "nitrogen",
+            "ewg"
+        ],
+        "smiles": "*[N+](=O)[O-]"
+    },
+    "acetylamino": {
+        "name": "acetylamino",
+        "filename": "acetylamino.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Acetylamino group (-NHAc)",
+        "category": "nitrogen",
+        "tags": [
+            "nitrogen",
+            "amide"
+        ],
+        "smiles": "*NC(=O)C"
+    },
+    "cyano": {
+        "name": "cyano",
+        "filename": "cyano.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Cyano group (-CN)",
+        "category": "carbonyl_nitrile",
+        "tags": [
+            "nitrile",
+            "ewg"
+        ],
+        "smiles": "*C#N"
+    },
+    "formyl": {
+        "name": "formyl",
+        "filename": "formyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Formyl group (-CHO)",
+        "category": "carbonyl_nitrile",
+        "tags": [
+            "carbonyl",
+            "ewg"
+        ],
+        "smiles": "*C=O"
+    },
+    "acetyl": {
+        "name": "acetyl",
+        "filename": "acetyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Acetyl group (-Ac)",
+        "category": "carbonyl_nitrile",
+        "tags": [
+            "carbonyl",
+            "ewg"
+        ],
+        "smiles": "*C(=O)C"
+    },
+    "carboxy": {
+        "name": "carboxy",
+        "filename": "carboxy.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Carboxy group (-COOH)",
+        "category": "carbonyl_nitrile",
+        "tags": [
+            "carboxy",
+            "ewg",
+            "protic"
+        ],
+        "smiles": "*C(=O)O"
+    },
+    "methoxycarbonyl": {
+        "name": "methoxycarbonyl",
+        "filename": "methoxycarbonyl.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Methoxycarbonyl group (-COOMe)",
+        "category": "carbonyl_nitrile",
+        "tags": [
+            "ester",
+            "ewg"
+        ],
+        "smiles": "*C(=O)OC"
+    },
+    "PPh2": {
+        "name": "PPh2",
+        "filename": "PPh2.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Diphenylphosphino group (-PPh2)",
+        "category": "phosphorus",
+        "tags": [
+            "phosphine",
+            "ligand",
+            "bulky",
+            "aryl"
+        ],
+        "smiles": "*P(c1ccccc1)c2ccccc2"
+    },
+    "PtBu2": {
+        "name": "PtBu2",
+        "filename": "PtBu2.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Di-tert-butylphosphino group (-PtBu2)",
+        "category": "phosphorus",
+        "tags": [
+            "phosphine",
+            "ligand",
+            "bulky",
+            "alkyl"
+        ],
+        "smiles": "*P(C(C)(C)C)C(C)(C)C"
+    },
+    "PCy2": {
+        "name": "PCy2",
+        "filename": "PCy2.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Dicyclohexylphosphino group (-PCy2)",
+        "category": "phosphorus",
+        "tags": [
+            "phosphine",
+            "ligand",
+            "bulky",
+            "alkyl"
+        ],
+        "smiles": "*P(C1CCCCC1)C2CCCCC2"
+    },
+    "PMe2": {
+        "name": "PMe2",
+        "filename": "PMe2.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Dimethylphosphino group (-PMe2)",
+        "category": "phosphorus",
+        "tags": [
+            "phosphine",
+            "ligand",
+            "alkyl"
+        ],
+        "smiles": "*P(C)C"
+    },
+    "PEt2": {
+        "name": "PEt2",
+        "filename": "PEt2.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Diethylphosphino group (-PEt2)",
+        "category": "phosphorus",
+        "tags": [
+            "phosphine",
+            "ligand",
+            "alkyl"
+        ],
+        "smiles": "*P(CC)CC"
+    },
+    "TMS": {
+        "name": "TMS",
+        "filename": "TMS.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Trimethylsilyl group (-TMS)",
+        "category": "silicon",
+        "tags": [
+            "silyl",
+            "bulky",
+            "protecting_group"
+        ],
+        "smiles": "*[Si](C)(C)C"
+    },
+    "TIPS": {
+        "name": "TIPS",
+        "filename": "TIPS.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Triisopropylsilyl group (-TIPS)",
+        "category": "silicon",
+        "tags": [
+            "silyl",
+            "bulky",
+            "protecting_group"
+        ],
+        "smiles": "*[Si](C(C)C)(C(C)C)C(C)C"
+    },
+    "Bpin": {
+        "name": "Bpin",
+        "filename": "Bpin.xyz",
+        "frag_pair": [
+            0,
+            1
+        ],
+        "description": "Pinacolatoboryl group (-Bpin)",
+        "category": "boron",
+        "tags": [
+            "boryl",
+            "ligand",
+            "coupling"
+        ],
+        "smiles": "*B1OC(C)(C)C(C)(C)O1"
+    }
+}

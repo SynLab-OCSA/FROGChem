@@ -1,0 +1,32 @@
+intro: |
+  The CH₃ radical (doublet, UKS) from the Gaussian/ORCA reference set, computed with
+  `! PrintBasis PrintMOs`, so the basis set and the α and β MO coefficients are in the output.
+data:
+  - path: tests/data/gaussian_ref/orca/g03_ch3_uks.out
+    about: ORCA, UKS B3LYP/G def2-TZVP, CH₃ radical, multiplicity 2
+  - path: tests/data/gaussian_ref/orca/g01_h2o_pure.out
+    about: ORCA, B3LYP/G def2-TZVPP, H₂O, closed shell
+steps:
+  - text: |
+      **1. Spin density and HOMO of the radical** on a 50 × 50 × 50 grid, in `cubes/`.
+    cmd: frog-density tests/data/gaussian_ref/orca/g03_ch3_uks.out --spin --homo --voxels 50 --out-dir cubes
+    show_files:
+      - path: cubes/g03_ch3_uks_spin_density.cube
+        lines: 10
+    after: |
+      * The spin density ranges from −0.010220 to 0.155477 e/bohr³. It is mostly positive, the unpaired α
+        electron on carbon, with small negative regions from spin polarisation. Draw it at
+        ±0.002–0.005.
+      * The HOMO is orbital 4 of the α set, the singly occupied p orbital. Its values are symmetric
+        (±0.387466) because an orbital has two lobes of opposite sign.
+      * The header shows the 50-point axes with different steps (0.293814, 0.303470, 0.231395 bohr): with
+        `--voxels` every axis has the same number of points over a box of a different length.
+  - text: |
+      **2. Total density and a chosen orbital of water** at the default 0.15 Å spacing, with `-o` as a
+      prefix because two cubes are written.
+    cmd: mkdir -p cubes && frog-density tests/data/gaussian_ref/orca/g01_h2o_pure.out --density --orbital 5 -o cubes/h2o
+    after: |
+      With the default spacing the axes have different numbers of points (52 × 45 × 41). Both cubes of this
+      run share that grid, so they can be combined with `frog-cube`. The maximum of the total density,
+      185.610135 e/bohr³, is at the grid point closest to the O nucleus; this is why total densities are drawn at 0.02–0.05 and not at
+      their maximum. Orbital 5 is the LUMO of water (5 doubly occupied MOs, numbered from 0).

@@ -1,0 +1,229 @@
+{
+  "1H": {
+    "element": "H",
+    "spin": 0.5,
+    "decoupled": false,
+    "gamma": 267522000.0,
+    "default_tms": 31.8,
+    "default_range": [-0.5, 14.0],
+    "name": "Proton"
+  },
+  "2H": {
+    "element": "H",
+    "spin": 1.0,
+    "decoupled": false,
+    "gamma": 41066000.0,
+    "default_tms": 31.8,
+    "default_range": [-0.5, 14.0],
+    "name": "Deuterium"
+  },
+  "6Li": {
+    "element": "Li",
+    "spin": 1.0,
+    "gamma": 39371000.0,
+    "default_tms": 90.0,
+    "default_range": [-10.0, 10.0],
+    "name": "Lithium-6"
+  },
+  "7Li": {
+    "element": "Li",
+    "spin": 1.5,
+    "gamma": 103962000.0,
+    "default_tms": 90.0,
+    "default_range": [-10.0, 10.0],
+    "name": "Lithium-7"
+  },
+  "10B": {
+    "element": "B",
+    "spin": 3.0,
+    "gamma": 28747000.0,
+    "default_tms": 100.0,
+    "default_range": [-100.0, 100.0],
+    "name": "Boron-10"
+  },
+  "11B": {
+    "element": "B",
+    "spin": 1.5,
+    "gamma": 85847000.0,
+    "default_tms": 100.0,
+    "default_range": [-100.0, 100.0],
+    "name": "Boron-11"
+  },
+  "13C": {
+    "element": "C",
+    "spin": 0.5,
+    "decoupled": true,
+    "gamma": 67282800.0,
+    "default_tms": 185.0,
+    "default_range": [-10.0, 220.0],
+    "name": "Carbon-13"
+  },
+  "14N": {
+    "element": "N",
+    "spin": 1.0,
+    "gamma": 19331000.0,
+    "default_tms": -135.0,
+    "default_range": [-400.0, 100.0],
+    "name": "Nitrogen-14"
+  },
+  "15N": {
+    "element": "N",
+    "spin": 0.5,
+    "gamma": -27116000.0,
+    "default_tms": -135.0,
+    "default_range": [-400.0, 100.0],
+    "name": "Nitrogen-15"
+  },
+  "17O": {
+    "element": "O",
+    "spin": 2.5,
+    "gamma": -36281000.0,
+    "default_tms": 300.0,
+    "default_range": [-100.0, 600.0],
+    "name": "Oxygen-17"
+  },
+  "19F": {
+    "element": "F",
+    "spin": 0.5,
+    "gamma": 251814800.0,
+    "default_tms": 188.0,
+    "default_range": [-250.0, 50.0],
+    "name": "Fluorine-19"
+  },
+  "23Na": {
+    "element": "Na",
+    "spin": 1.5,
+    "gamma": 70808000.0,
+    "default_tms": 550.0,
+    "default_range": [-50.0, 50.0],
+    "name": "Sodium-23"
+  },
+  "27Al": {
+    "element": "Al",
+    "spin": 2.5,
+    "gamma": 69763000.0,
+    "default_tms": 550.0,
+    "default_range": [-50.0, 250.0],
+    "name": "Aluminium-27"
+  },
+  "29Si": {
+    "element": "Si",
+    "spin": 0.5,
+    "gamma": -53190000.0,
+    "default_tms": 360.0,
+    "default_range": [-150.0, 50.0],
+    "name": "Silicon-29"
+  },
+  "31P": {
+    "element": "P",
+    "spin": 0.5,
+    "gamma": 108394000.0,
+    "default_tms": 280.0,
+    "default_range": [-150.0, 250.0],
+    "name": "Phosphorus-31"
+  },
+  "33S": {
+    "element": "S",
+    "spin": 1.5,
+    "gamma": 20546800.0,
+    "default_tms": 469.0,
+    "default_range": [-200.0, 300.0],
+    "name": "Sulfur-33"
+  },
+  "35Cl": {
+    "element": "Cl",
+    "spin": 1.5,
+    "gamma": 26242000.0,
+    "default_tms": 900.0,
+    "default_range": [-100.0, 1100.0],
+    "name": "Chlorine-35"
+  },
+  "37Cl": {
+    "element": "Cl",
+    "spin": 1.5,
+    "gamma": 21844000.0,
+    "default_tms": 900.0,
+    "default_range": [-100.0, 1100.0],
+    "name": "Chlorine-37"
+  },
+  "51V": {
+    "element": "V",
+    "spin": 3.5,
+    "gamma": 70455000.0,
+    "default_tms": -500.0,
+    "default_range": [-1500.0, 500.0],
+    "name": "Vanadium-51"
+  },
+  "77Se": {
+    "element": "Se",
+    "spin": 0.5,
+    "gamma": 51253857.0,
+    "default_tms": 1000.0,
+    "default_range": [-500.0, 1500.0],
+    "name": "Selenium-77"
+  },
+  "79Br": {
+    "element": "Br",
+    "spin": 1.5,
+    "gamma": 67256000.0,
+    "default_tms": 2200.0,
+    "default_range": [-100.0, 1500.0],
+    "name": "Bromine-79"
+  },
+  "81Br": {
+    "element": "Br",
+    "spin": 1.5,
+    "gamma": 72497000.0,
+    "default_tms": 2200.0,
+    "default_range": [-100.0, 1500.0],
+    "name": "Bromine-81"
+  },
+  "113Cd": {
+    "element": "Cd",
+    "spin": 0.5,
+    "gamma": -59609155.0,
+    "default_tms": 3000.0,
+    "default_range": [-500.0, 1000.0],
+    "name": "Cadmium-113"
+  },
+  "119Sn": {
+    "element": "Sn",
+    "spin": 0.5,
+    "gamma": -100317000.0,
+    "default_tms": 2400.0,
+    "default_range": [-600.0, 400.0],
+    "name": "Tin-119"
+  },
+  "127I": {
+    "element": "I",
+    "spin": 2.5,
+    "gamma": 53895730.0,
+    "default_tms": 3500.0,
+    "default_range": [-500.0, 3000.0],
+    "name": "Iodine-127"
+  },
+  "195Pt": {
+    "element": "Pt",
+    "spin": 0.5,
+    "gamma": 58385000.0,
+    "default_tms": 4000.0,
+    "default_range": [-5000.0, 1000.0],
+    "name": "Platinum-195"
+  },
+  "199Hg": {
+    "element": "Hg",
+    "spin": 0.5,
+    "gamma": 48430000.0,
+    "default_tms": 3500.0,
+    "default_range": [-3000.0, 500.0],
+    "name": "Mercury-199"
+  },
+  "207Pb": {
+    "element": "Pb",
+    "spin": 0.5,
+    "gamma": 55800000.0,
+    "default_tms": 5000.0,
+    "default_range": [-2000.0, 2000.0],
+    "name": "Lead-207"
+  }
+}

@@ -1,0 +1,35 @@
+REGEXS = {
+    # Orientation tables, in order of preference: Input orientation is not printed by
+    # every job (e.g. opt + freq with symmetry prints only the standard orientation)
+    'geom_headers': ("Input orientation:", "Standard orientation:", "Z-Matrix orientation:"),
+    'energy': r'SCF Done\s*:\s*.*?=\s+(-?\d+\.\d+)',
+    'charge_mult': r'Charge\s*=\s*(-?\d+)\s+Multiplicity\s*=\s*(\d+)',
+    'rot_const': r'Rotational constants \(GHZ\):\s*(-?\d+\.\d+)\s*(-?\d+\.\d+)\s*(-?\d+\.\d+)',
+    'units_B': 'GHz',
+    'dipole_moment': r'Total Dipole Moment\s*:\s*([+-]?\d+\.\d+)\s+([+-]?\d+\.\d+)\s+([+-]?\d+\.\d+)',
+    'dipole_start': 'Dipole moment',
+    'dipole_end': 'Quadrupole',
+    'dipole_pattern': r'X=\s+(-?\d+\.\d+)\s+Y=\s+(-?\d+\.\d+)\s+Z=\s+(-?\d+\.\d+)',
+    'freq_section': 'Harmonic frequencies (cm**-1), IR intensities (KM/Mole), Raman scattering',
+    'freq_end': '\n\n\n',
+    'freq_pattern': r'Frequencies\s*--\s*((?:[+-]?\d+\.\d+\s*)+)',
+    'ir_pattern': r'IR Inten\s*--\s*((?:[+-]?\d+\.\d+\s*)+)',
+    'raman_pattern': r'Raman Activ\s*--\s*((?:[+-]?\d+\.\d+\s*)+)',
+    'tddft_start': 'Excitation energies and oscillator strengths',
+    'tddft_end': '***',
+    'tddft_state': r'Excited State\s+\d+:\s+.*?([-+]?\d+\.\d+) eV.*?f=([-+]?\d+\.\d+)',
+    'ecd_section_start': '<0|del|b> * <b|rxdel|0> + <0|del|b> * <b|delr+rdel|0>',
+    'ecd_section_end': "1/2[<0|r|b>*<b|rxdel|0> + (<0|rxdel|b>*<b|r|0>)*]",
+    'ecd_pattern': r'^\s*\d+\s+[+-]?\d+\.\d+\s+[+-]?\d+\.\d+\s+[+-]?\d+\.\d+\s+([+-]?\d+\.\d+)',
+    'npa_start': 'Summary of Natural Population Analysis',
+    'npa_pattern': r'^\s*([A-Z][a-z]?)\s+(\d+)\s+(-?\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)',
+    'npa_end': '=======',
+    # 'Mulliken charges:' / 'Mulliken charges and spin densities:' (G16), 'Mulliken atomic charges:' (G09);
+    # not the '... with hydrogens summed into heavy atoms' tables
+    'mulliken_start': r'Mulliken (?:atomic )?charges(?: and spin densities)?:[ \t]*\n',
+    'mulliken_end': 'Sum of Mulliken',
+    'loewdin_start': r'Lowdin Atomic Charges:[ \t]*\n',
+    'loewdin_end': 'Sum of Lowdin',
+    'opt_done': 'Optimization completed',
+    'finish': 'Normal termination',
+}

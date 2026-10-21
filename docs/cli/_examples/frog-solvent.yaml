@@ -1,0 +1,28 @@
+intro: |
+  Solvent surfaces of a single water molecule. The grid is coarsened to 0.2 Å to keep the cubes small
+  (the default 0.1 Å gives about 28 MB per cube).
+data:
+  - path: files/water.xyz
+    about: H₂O geometry (XYZ)
+steps:
+  - text: |
+      **1. SAS and SES for a water probe** (1.4 Å).
+    cmd: frog-solvent files/water.xyz --spacing 0.2 --out-dir surf
+    show_files:
+      - path: surf/water_ses.cube
+        lines: 8
+    after: |
+      * The SAS encloses 124.79 Å³ and the SES 21.59 Å³: the SAS lies one probe radius further out.
+      * The cube header is in bohr (0.377945 bohr = 0.2 Å step), but the values are distances in Å. Draw the
+        0.0 isosurface. The range of the SES field, −1.4560 to 9.3531 Å, goes from the deepest point inside the surface
+        to the farthest corner of the box.
+      * At 0.2 Å the SES volume is a little larger than at the default 0.1 Å, where the Guide example reports
+        19.85 Å³: a coarse grid overestimates it.
+  - text: |
+      **2. A larger probe** (1.9 Å) and only the SAS. Only one cube is written.
+    cmd: frog-solvent files/water.xyz --sas-only --probe-radius 1.9 --spacing 0.2 --out-dir surf_big
+    output: full
+    after: |
+      With a 1.9 Å probe the SAS volume grows from 124.79 to 195.82 Å³. The box grows too (73 × 69 × 66
+      points), because the padding includes the largest radius plus the probe. The *SES Cube* column shows
+      `-`.

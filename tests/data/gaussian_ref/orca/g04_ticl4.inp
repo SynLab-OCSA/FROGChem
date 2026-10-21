@@ -1,0 +1,11 @@
+# Twin of gaussian/g04_ticl4.gjf: TiCl4 closed shell, d and f functions on a transition metal
+! B3LYP/G def2-TZVP NoRI TightSCF DefGrid3 PrintBasis PrintMOs
+%pal nprocs 40 end
+%maxcore 1500
+* xyz 0 1
+ Ti     0.000000     0.000000     0.000000
+ Cl     1.252850     1.252850     1.252850
+ Cl     1.252850    -1.252850    -1.252850
+ Cl    -1.252850     1.252850    -1.252850
+ Cl    -1.252850    -1.252850     1.252850
+*

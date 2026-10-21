@@ -1,0 +1,122 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "frogchem"
+version = "0.1.0"
+description = "FROG — Find, Refine, Organize and Graph"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"} 
+authors = [
+    {name = "Andrea Pellegrini", email = "andrea.pellegrini15@unibo.it"},
+    {name = "Paolo Righi"}
+]
+keywords = [
+    "chemistry",
+    "computational-chemistry",
+    "quantum-chemistry",
+    "orca",
+    "gaussian",
+    "thermodynamics",
+    "cheminformatics",
+    "reaction-profiles",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "numpy>=1.25.2",
+    "scipy",
+    "stericrender",
+    "xyzrender",
+    "matplotlib",
+    "InquirerPy>=0.3.4",
+    "seaborn",
+    "periodictable",
+    "pandas",
+    "rich",
+    "colour-science",
+    "ase>=3.22.0",
+    "rdkit",
+    "aimnet[ase] @ git+https://github.com/isayevlab/aimnetcentral.git",
+    "mdtraj",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx-rtd-theme>=2.0.0",
+    "myst-parser>=2.0.0",
+    "sphinx-design>=0.5.0",
+    "sphinx-copybutton>=0.5.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/andrea-pellegrini/paclab"
+Repository = "https://github.com/andrea-pellegrini/paclab"
+Documentation = "https://paclab.readthedocs.io/"
+"Issue Tracker" = "https://github.com/andrea-pellegrini/paclab/issues"
+
+[tool.setuptools.package-data]
+frogchem = ["py.typed", "data/*.json"]
+
+# ENTRY POINTS
+[project.scripts]
+frog = "frogchem.cli.base:main"
+frog-cdft = "frogchem.cli.calc_cdft:main"
+frog-si = "frogchem.cli.generate_si:main"
+frog-steric = "frogchem.cli.calc_steric:main"
+frog-autoprofile = "frogchem.cli.auto_profile:main"
+frog-rmsd = "frogchem.cli.calc_rmsd:main"
+frog-rrho = "frogchem.cli.calc_rrho:main"
+frog-crest = "frogchem.cli.create_crest_input:main"
+frog-cube = "frogchem.cli.cube_manipulation:main"
+frog-fragments = "frogchem.cli.fragment_detection:main"
+frog-hessian = "frogchem.cli.hessian_localizer:main"
+frog-internals = "frogchem.cli.internals:main"
+frog-mirror = "frogchem.cli.mirror_ensemble:main"
+frog-profile = "frogchem.cli.reaction_profile:main"
+frog-sort = "frogchem.cli.sort_diastero:main"
+frog-sort-ez = "frogchem.cli.sort_ez:main"
+frog-split = "frogchem.cli.split_xyz:main"
+frog-tddft = "frogchem.cli.tddft_parser:main"
+frog-sym = "frogchem.cli.detect_symmetry:main"
+frog-mo = "frogchem.cli.mo_coeff:main"
+frog-nics = "frogchem.cli.nics_geometry:main"
+frog-xyz = "frogchem.cli.write_xyz:main"
+frog-spin = "frogchem.cli.calc_loc_spin:main"
+frog-charges = "frogchem.cli.get_charges:main"
+frog-nbo = "frogchem.cli.nbo_parser:main"
+frog-substitute = "frogchem.cli.substitute_fragment:main"
+frog-sub-db = "frogchem.cli.manage_sub_db:main"
+frog-cie = "frogchem.cli.cie_plot:main"
+frog-md = "frogchem.cli.md_analysis:main"
+frog-er = "frogchem.cli.calc_er:main"
+frog-plot-neb = "frogchem.cli.plot_neb:main"
+frog-stereocenters = "frogchem.cli.stereocenters:main"
+frog-density = "frogchem.cli.electronic_density:main"
+frog-solvent = "frogchem.cli.solvent_surface:main"
+frog-nmr = "frogchem.cli.calc_nmr:main"
+frog-nmr-equiv = "frogchem.cli.nmr_equiv:main"
+
+[tool.pyright]
+pythonVersion = "3.9"
+typeCheckingMode = "basic"
+include = ["src/frogchem"]
+exclude = ["**/__pycache__", "**/node_modules"]
+reportMissingImports = false
+reportMissingTypeStubs = false
+

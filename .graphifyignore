@@ -1,0 +1,4 @@
+# Exclude test suites and test scratch files from graphify
+tests/
+test_*
+patch_*

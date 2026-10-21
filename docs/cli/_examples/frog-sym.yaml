@@ -1,0 +1,42 @@
+intro: |
+  Point groups of small test molecules, verification of target groups with and without hydrogens, and
+  the standard orientation of a larger molecule.
+data:
+- path: files/water.xyz
+  about: H2O
+- path: files/methane.xyz
+  about: CH4
+- path: files/ethyne.xyz
+  about: C2H2
+- path: files/tol.xyz
+  about: toluene, C7H8
+- path: files/geom.xyz
+  about: C12H10O2S2, 26 atoms
+steps:
+- text: |
+    **1. Tolerance scan** (0.1, 0.2, 0.5, 1.0 Å).
+  cmd: frog-sym files/water.xyz files/methane.xyz files/ethyne.xyz files/tol.xyz files/geom.xyz
+  after: |
+    * Water is C2v up to 0.2 Å, methane Td, and ethyne `D_inf_h` (D∞h) at every tolerance. Toluene is Cs,
+      and `geom.xyz` is Ci with a deviation of 0.0448 Å.
+    * Large tolerances give nonsense: water becomes D8h at 0.5 Å and Td at 1.0 Å, and `geom.xyz` becomes
+      C2h at 0.5 Å with a deviation of 0.4401 Å. Trust the group found at the smallest tolerance with a
+      small *RMSD*.
+- text: |
+    **2. Verify target groups** for toluene: all atoms, then the heavy-atom framework only.
+  cmd: frog-sym files/tol.xyz -g Cs C2v -q; frog-sym files/tol.xyz -g Cs C2v --exclude-h -q
+  after: |
+    * With all atoms toluene matches Cs at 0.05 Å; C2v is never found. *Detected* (D6h) is the group at
+      the last tolerance tried (1.5 Å), not a result.
+    * With `--exclude-h` the C7 framework matches C2v at 0.05 Å (deviation 0.0017 Å): the methyl
+      hydrogens are what lowers the symmetry to Cs. Cs is no longer an exact match, even though it is a
+      subgroup of C2v.
+- text: |
+    **3. One tolerance and the aligned geometry** (`-w`).
+  cmd: frog-sym files/geom.xyz -t 0.2 -w
+  show_files:
+  - path: files/geom_std.xyz
+    lines: 6
+  after: |
+    `files/geom_std.xyz` has the centre of mass at the origin and the principal axes ($I_a$ = 677.99,
+    $I_b$ = 1303.25, $I_c$ = 1973.15 amu·Å²) along x, y and z.

@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  profile-designer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: frog-profile-designer
+    ports:
+      - "8501:8501"
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_SERVER_ENABLE_CORS=false
+      - STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+      - MPLCONFIGDIR=/tmp/matplotlib
+    volumes:
+      - ./src:/app/src
+      - ./files:/app/files
+    restart: unless-stopped
+
+    
+#  # Optional backend services (run with: docker compose --profile fullstack up)
+#   web:
+#     build:
+#       context: .
+#       dockerfile: web/Dockerfile
+#     container_name: frog_web
+#     ports:
+#       - "8000:8000"
+#     environment:
+#       - FROG_ENV=development
+#       - DATABASE_URL=sqlite:////data/db/frogchem.sqlite
+#       - SECRET_KEY=change_this_in_production_super_secret_key
+#       - DATA_DIR=/data/users
+#     volumes:
+#       - ./web/backend:/app/backend
+#       - frog_db:/data/db
+#       - frog_users:/data/users
+#     depends_on:
+#       - redis
+#     restart: unless-stopped
+#     profiles:
+#       - fullstack
+
+#   worker:
+#     build:
+#       context: .
+#       dockerfile: web/Dockerfile
+#     container_name: frog_worker
+#     command: celery -A backend.worker.app worker --loglevel=info
+#     environment:
+#       - FROG_ENV=development
+#       - DATABASE_URL=sqlite:////data/db/frogchem.sqlite
+#       - CELERY_BROKER_URL=redis://redis:6379/0
+#       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+#       - DATA_DIR=/data/users
+#     volumes:
+#       - ./web/backend:/app/backend
+#       - frog_db:/data/db
+#       - frog_users:/data/users
+#     depends_on:
+#       - redis
+#     restart: unless-stopped
+#     profiles:
+#       - fullstack
+
+#   redis:
+#     image: redis:7-alpine
+#     container_name: frog_redis
+#     ports:
+#       - "6379:6379"
+#     volumes:
+#       - frog_redis:/data
+#     restart: unless-stopped
+#     profiles:
+#       - fullstack
+
+# volumes:
+#   frog_db:
+#   frog_users:
+#   frog_redis:

@@ -1,0 +1,23 @@
+intro: |
+  Distances, angles and dihedrals along the Ag complex ensemble, and the coordination geometry of the
+  Ru complex.
+data:
+- path: files/ensemble.xyz
+  about: 18 conformers of an Ag complex, 168 atoms
+- path: files/opt.out
+  about: ORCA, r²SCAN-3c OptTS Freq (transition state), Ru complex C45H42F3IO2P2Ru
+steps:
+- text: |
+    **1. One distance, one angle and one dihedral for every conformer.**
+  cmd: frog-internals files/ensemble.xyz -i 0 50 -i 50 0 83 -i 50 0 4 3
+  after: |
+    * Columns are ordered by type (`A`, `B`, `D`), not in the order of the `-i` options.
+    * The Ag–P50 distance stays between 2.528 and 2.657 Å and the P50–Ag0–P83 angle between 84.939° and
+      107.097° (conformers 15 and 16 are the most open). The dihedral P50–Ag0–C4–N3 changes sign along the
+      ensemble, from −72.307° (conformer 0) to +80.493° (conformer 14): this is the rotation used to sort
+      the ensemble in `frog-sort`.
+- text: |
+    **2. Ru–ligand distances and the P–Ru–P bite angle of an ORCA output**, as CSV.
+  cmd: frog-internals files/opt.out -i 36 37 -i 36 38 -i 2 36 3 --format csv -q
+  after: |
+    CSV keeps full precision: Ru–C(O) 1.840 Å, Ru–I 2.816 Å and a P–Ru–P bite angle of 85.2°.

@@ -1,0 +1,32 @@
+intro: |
+  Constraint inputs for two structures from `files/`: the 18-conformer Ag complex ensemble (multi-structure
+  XYZ) and the ORCA optimisation of the Ru complex.
+data:
+- path: files/ensemble.xyz
+  about: 18 conformers of an Ag complex, 168 atoms (comment line = energy)
+- path: files/opt.out
+  about: ORCA, r²SCAN-3c OptTS Freq (transition state), Ru complex C45H42F3IO2P2Ru
+steps:
+- text: |
+    **1. Freeze the Ag centre and three donor atoms** of the first conformer.
+  cmd: frog-crest files/ensemble.xyz -i 0 4 50 83 -o crest/constrain.inp
+  show_files:
+  - path: crest/constrain.inp
+  - path: crest/ensemble_ref.xyz
+    lines: 3
+  after: |
+    * The 0-based indices 0 4 50 83 became `1,5,51,84` (CREST counts from 1).
+    * `ensemble.xyz` holds 18 structures, so the first one was copied to `crest/ensemble_ref.xyz` (168
+      atoms) and the constraint file points to it by name. Run CREST from `crest/`, e.g.
+      `crest ensemble_ref.xyz --cinp constrain.inp`.
+- text: |
+    **2. Freeze the Ru coordination sphere of an ORCA output.**
+  cmd: frog-crest files/opt.out -i 2 3 36 37 38 39 40 41 -o ru/constrain.inp
+  show_files:
+  - path: ru/constrain.inp
+  - path: ru/opt_ref.xyz
+    lines: 3
+  after: |
+    * Consecutive atoms are compacted: 2 3 36 37 38 39 40 41 became `3-4,37-42`.
+    * For an ORCA output the last geometry (96 atoms) is written to `ru/opt_ref.xyz`, which is also a
+      convenient starting structure for CREST.
