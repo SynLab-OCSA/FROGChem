@@ -50,12 +50,12 @@ test:
     - frog-tddft --help
 
 about:
-  home: https://github.com/andrea-pellegrini/paclab
+  home: https://github.com/SynLab-OCSA/frog
   summary: "FROG — Find, Refine, Organize and Graph"
   license: MIT
   license_file: LICENSE
-  doc_url: https://andrea-pellegrini.github.io/paclab/
-  dev_url: https://github.com/andrea-pellegrini/paclab
+  doc_url: https://frog-chem.readthedocs.io/
+  dev_url: https://github.com/SynLab-OCSA/frog
 
 extra:
   recipe-maintainers:

@@ -65,10 +65,10 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/andrea-pellegrini/paclab"
-Repository = "https://github.com/andrea-pellegrini/paclab"
-Documentation = "https://paclab.readthedocs.io/"
-"Issue Tracker" = "https://github.com/andrea-pellegrini/paclab/issues"
+Homepage = "https://github.com/SynLab-OCSA/frog"
+Repository = "https://github.com/SynLab-OCSA/frog"
+Documentation = "https://frog-chem.readthedocs.io/"
+"Issue Tracker" = "https://github.com/SynLab-OCSA/frog/issues"
 
 [tool.setuptools.package-data]
 frogchem = ["py.typed", "data/*.json"]
