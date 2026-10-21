@@ -1,0 +1,34 @@
+intro: |
+  Two ORCA optimisation + frequency jobs (a transition state and a minimum) and a Gaussian single point
+  without frequencies.
+data:
+  - path: files/orb.out
+    about: ORCA, B3LYP-D4/def2-TZVP CPCM(toluene) OptTS Freq, 37 atoms
+  - path: files/test.out
+    about: ORCA, r²SCAN-3c Opt Freq, C₉H₈NS
+  - path: tests/data/gaussian_ref/gaussian/g04_ticl4.log
+    about: Gaussian 16, B3LYP/def2-TZVP single point, TiCl₄ (no frequencies)
+steps:
+  - text: |
+      **1. Default report** (`SI_report.md` in the current folder, 298.15 K). Below are the first lines of the
+      file; the coordinate block follows them.
+    cmd: frog-si files/orb.out files/test.out
+    show_files:
+      - path: SI_report.md
+        lines: 11
+    after: |
+      * `orb` is labelled **TS** because it has exactly one imaginary frequency (−356.93 cm⁻¹).
+      * After the `### Cartesian Coordinates (Å)` heading the file has an `xyz` code block (atom count, comment line, coordinates),
+        followed by a `---` separator and the `## test (Minimum)` section.
+      * E, ZPVE, H and G are in Hartree. H and G are FROG's mRRHO values at 298.15 K, the same model and
+        defaults as `frog-rrho`.
+  - text: |
+      **2. Another temperature and path, plus a file without frequencies.** Only the section headers and the
+      energies are shown (`grep`).
+    cmd: frog-si files/test.out tests/data/gaussian_ref/gaussian/g04_ticl4.log -T 273.15 -o si/SI_0C.md
+  - cmd: grep -A6 "^## " si/SI_0C.md
+    after: |
+      * At 273.15 K, E and ZPVE of `test` are unchanged, while H (−800.599627 Eh) and G (−800.639195 Eh) are
+        recomputed.
+      * The Gaussian single point has no frequencies. It is still labelled *Minimum* and ZPVE/H/G are
+        `N/A`, so the label carries no information here. Use the output of the frequency job for each structure.

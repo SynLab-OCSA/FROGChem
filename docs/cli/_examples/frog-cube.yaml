@@ -1,0 +1,35 @@
+intro: |
+  The two difference-density cubes in `files/` were written by `frog-tddft --dct` for the S1 and T1 states
+  of the same TD-DFT job. They share the same 60 × 60 × 60 grid and the same geometry.
+data:
+  - path: files/1_p8_orca_S1_delta_rho.cube
+    about: Δρ(S1) = ρ(S1) − ρ(S0), 48 atoms, 60 × 60 × 60
+  - path: files/1_p8_orca_T1_delta_rho.cube
+    about: Δρ(T1), same grid
+  - path: files/test.cube
+    about: ORCA total electron density of another molecule (19 atoms)
+steps:
+  - text: |
+      **1. S1 − T1.** The second file minus the first.
+    cmd: frog-cube -s files/1_p8_orca_T1_delta_rho.cube files/1_p8_orca_S1_delta_rho.cube
+    show_files:
+      - path: 1_p8_orca_S1_delta_rho_minus_1_p8_orca_T1_delta_rho.cube
+        lines: 8
+    after: |
+      The new cube has the same header as the first file, with its own title lines: 48 atoms, origin and
+      60 × 60 × 60 grid. Only the values differ. In a viewer, positive regions (S1 − T1 > 0) are where the
+      singlet puts more electron density than the triplet. Draw both signs at a small isovalue
+      (±0.001–0.002 e/bohr³), because the two Δρ largely cancel.
+  - text: |
+      **2. Flip the sign of a cube** with `-m … -1`, written to a chosen path.
+    cmd: mkdir -p cub && frog-cube -m files/1_p8_orca_S1_delta_rho.cube -1 -o cub/S1_inverted.cube
+    show_files:
+      - path: cub/S1_inverted.cube
+        lines: 4
+  - text: |
+      **3. Cubes on different grids cannot be combined.**
+    cmd: frog-cube -a files/test.cube files/1_p8_orca_S1_delta_rho.cube
+    expect_rc: 1
+    after: |
+      The command stops with exit code 1 and writes nothing. `files/test.cube` is the density of another
+      molecule on another box, so its origin differs from that of the Δρ cube.

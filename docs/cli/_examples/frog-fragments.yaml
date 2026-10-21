@@ -1,0 +1,35 @@
+intro: |
+  The Ag complex ensemble contains a separate molecule next to the complex; the Ru complex is a single
+  molecule whose weakest metal–ligand contact can be cut by lowering the bonding buffer.
+data:
+- path: files/ensemble.xyz
+  about: 18 conformers of an Ag complex, 168 atoms
+- path: files/opt.out
+  about: ORCA, r²SCAN-3c OptTS Freq (transition state), Ru complex C45H42F3IO2P2Ru (96 atoms)
+steps:
+- text: |
+    **1. Fragments of every conformer** (default buffer 0.3 Å).
+  cmd: frog-fragments files/ensemble.xyz
+  output: head:12
+  after: |
+    Every conformer (only the first 7 rows are shown) has the same two fragments: atoms 0–11 plus 50–167
+    (the Ag complex) and atoms 12–49 (a separate 38-atom molecule). Use these ranges for `-E` in
+    `frog-steric` or `--fragment` in other commands.
+- hidden: true
+  cmd: xyzrender files/opt.out --hl "42,50-54,96" -o ru_fragment1.png
+- text: |
+    **2. Smaller buffer on the Ru complex, and write each fragment** (`-w`) to its own folder.
+  cmd: frog-fragments files/opt.out -b 0.1 -w --out-dir frags
+  show_files:
+  - path: frags/opt_conf0_frag1.xyz
+    lines: 9
+  images:
+  - path: ru_fragment1.png
+    caption: Ru complex `files/opt.out` (rendered with xyzrender, hydrogens hidden). Highlighted in magenta are
+      the atoms of fragment 1 found with `-b 0.1`.
+    width: 60%
+  after: |
+    With the default buffer (0.3 Å) the Ru complex is one fragment (see the table above for the Ag
+    complex). With `-b 0.1` the 7-atom unit `41 49:53 95` (O, C, C, three F and H, shown in the file)
+    is no longer bonded to the rest of the complex. The other fragment (atoms 0–40, 42–48 and 54–94)
+    keeps the Ru atom (36). Both are written to `frags/`.

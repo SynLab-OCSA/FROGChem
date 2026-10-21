@@ -1,0 +1,25 @@
+intro: |
+  The 18 conformers of the Ag complex sorted by the signs of two dihedrals around the Ag–C4 bond.
+data:
+- path: files/ensemble.xyz
+  about: 18 conformers of an Ag complex, 168 atoms (comment line = energy)
+steps:
+- text: |
+    **1. One dihedral**, P50–Ag0–C4–N3.
+  cmd: frog-sort files/ensemble.xyz -i 50 0 4 3
+  output: tail:9
+  after: |
+    Only the end of the output is shown: 10 conformers have a negative dihedral (N) and 8 a positive one (P).
+- text: |
+    **2. Two dihedrals, and write one file per category.**
+  cmd: frog-sort files/ensemble.xyz -i 50 0 4 3 -i 83 0 4 3 -w --out-dir sorted
+  show_files:
+  - path: sorted/ensemble_PN.xyz
+    lines: 3
+  after: |
+    * Three codes out of four possible: NP (10 conformers), PP (5) and PN (3). NN does not occur and no
+      file is written for it.
+    * The second dihedral (83-0-4-3) is always far from 0° (112.49° to 174.99°, or −173.32° to −164.52°).
+      It changes sign only for conformers 14–16, where it is close to 180°, so the PP/PN split is not
+      chemically meaningful. The first dihedral is the one that separates the two families.
+    * `sorted/ensemble_PN.xyz` keeps the CREST energy as comment line (−257.39917162).

@@ -1,0 +1,21 @@
+intro: |
+  Classification of the 18 conformers of the Ag complex by the C2–C1–N3–C4 dihedral.
+data:
+- path: files/ensemble.xyz
+  about: 18 conformers of an Ag complex, 168 atoms (comment line = energy)
+steps:
+- text: |
+    **1. Default threshold (90°).**
+  cmd: frog-sort-ez files/ensemble.xyz -i 2 1 3 4
+  after: |
+    All dihedrals are negative (−133.60° to −34.29°); only $|\phi|$ counts. With the 90° boundary 10
+    conformers are E and 8 are Z.
+- text: |
+    **2. Tolerance windows around 0° and 180°, cis/trans labels, and one file per class.**
+  cmd: frog-sort-ez files/ensemble.xyz -i 2 1 3 4 --tolerance 60 --notation cis-trans -w --out-dir ez
+  output: tail:12
+  after: |
+    With windows of ±60° around 0° and 180°, 5 conformers are cis ($|\phi| \le 60°$), 9 trans
+    ($|\phi| \ge 120°$) and 4 other. Two of the *other* conformers, 5 (−119.32°, E above) and 6
+    (−80.11°, Z above), were forced into a class by the default threshold. The tolerance mode leaves
+    such intermediate values unclassified. Each non-empty class was written to `ez/`.

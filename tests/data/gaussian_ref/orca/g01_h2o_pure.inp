@@ -1,0 +1,9 @@
+# Twin of gaussian/g01_h2o_pure.gjf: H2O closed shell, pure 5D/7F functions (s, p, d, f)
+! B3LYP/G def2-TZVPP NoRI TightSCF DefGrid3 PrintBasis PrintMOs
+%pal nprocs 40 end
+%maxcore 1500
+* xyz 0 1
+ O      0.001000    -0.374000     0.000000
+ H     -0.766000     0.185000     0.000000
+ H      0.765000     0.189000     0.000000
+*

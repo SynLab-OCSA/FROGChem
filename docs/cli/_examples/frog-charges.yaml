@@ -1,0 +1,32 @@
+intro: |
+  Water and TiCl₄, each computed with the same input in ORCA and in Gaussian 16. The Gaussian route
+  contains `iop(6/80=1)`, so both programs print Löwdin charges. A second Gaussian water job differs only in
+  the d/f functions (Cartesian 6D 10F instead of pure 5D 7F), which shows how sensitive both schemes are
+  to the basis set.
+data:
+  - path: tests/data/gaussian_ref/orca/g01_h2o_pure.out
+    about: ORCA, B3LYP/def2-TZVPP, H₂O
+  - path: tests/data/gaussian_ref/gaussian/g01_h2o_pure.log
+    about: Gaussian 16 twin, `5D 7F pop=full iop(3/33=1) iop(6/80=1)`
+  - path: tests/data/gaussian_ref/gaussian/g02_h2o_cart.log
+    about: Gaussian 16, same job with Cartesian `6D 10F` functions
+  - path: tests/data/gaussian_ref/orca/g04_ticl4.out
+    about: ORCA, B3LYP/def2-TZVP, TiCl₄ (Gaussian twin `gaussian/g04_ticl4.log`)
+steps:
+  - text: |
+      **1. Atoms 0 and 1 in four files** (0-based: O and H in water, Ti and one Cl in TiCl₄).
+    cmd: frog-charges tests/data/gaussian_ref/orca/g01_h2o_pure.out tests/data/gaussian_ref/gaussian/g01_h2o_pure.log tests/data/gaussian_ref/orca/g04_ticl4.out tests/data/gaussian_ref/gaussian/g04_ticl4.log -i 0 1
+    after: |
+      * ORCA and Gaussian print the same charges for the same job.
+      * Mulliken gives the chemically expected signs: O −0.389 / H +0.194 and Ti +1.082 / Cl −0.271.
+        **Löwdin reverses both signs** in these large, polarised basis sets: O +0.289 / H −0.144 and Ti −0.807 /
+        Cl +0.202. This is what the programs print, not a parsing error. It shows why neither scheme should be
+        read as an absolute charge.
+  - text: |
+      **2. Same molecule, different basis-function type.** Only the d/f functions change (pure → Cartesian).
+      The CSV output keeps all six decimals.
+    cmd: frog-charges tests/data/gaussian_ref/gaussian/g01_h2o_pure.log tests/data/gaussian_ref/gaussian/g02_h2o_cart.log -i 0 --format csv -q
+    after: |
+      The oxygen Mulliken charge moves from −0.388889 to −0.358343, and the Löwdin charge from +0.288605 to
+      +0.116563. The geometry and functional are the same. Compare charges only within one basis set, and use NPA
+      (`frog-nbo --npa`) when a less basis-dependent number is needed.

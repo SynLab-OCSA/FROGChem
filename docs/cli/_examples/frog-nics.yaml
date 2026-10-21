@@ -1,0 +1,16 @@
+intro: |
+  Toluene from `files/`: atoms 0–5 are the ring carbons, atom 6 is the methyl carbon.
+data:
+  - path: files/tol.xyz
+    about: toluene, XYZ
+steps:
+  - text: |
+      **1. Ghost atom at the ring centroid**, also written as ORCA coordinate lines.
+    cmd: frog-nics files/tol.xyz -i 0 1 2 3 4 5 -w
+    show_files:
+      - path: files/tol_nics.txt
+    after: |
+      The ghost `H:` is at (0.679003, 0.000000, 0.000233) Å, the mean of the six ring carbons; the methyl
+      atoms are not used. Paste `files/tol_nics.txt` between `* xyz 0 1` and `*` of an ORCA input with
+      `! NMR`. After the run, NICS(0) = −σ_iso of atom 15, the last atom (0-based), in the *CHEMICAL SHIELDING
+      SUMMARY*. For NICS(1), move the ghost 1 Å along the ring normal, here the z axis, by hand.

@@ -1,0 +1,13 @@
+%chk=g03_ch3_uks.chk
+%mem=72GB
+%nprocshared=40
+#p UB3LYP/def2TZVP 5D 7F nosymm scf=tight pop=full iop(3/33=1) iop(6/80=1) gfinput
+
+CH3 radical doublet, unrestricted (alpha and beta MOs, spin density)
+
+0 2
+ C      0.000000     0.000000     0.000000
+ H      1.079000     0.000000     0.000000
+ H     -0.539500     0.934441     0.000000
+ H     -0.539500    -0.934441     0.000000
+

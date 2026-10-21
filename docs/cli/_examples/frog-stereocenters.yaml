@@ -1,0 +1,33 @@
+intro: |
+  Stereocentres of two organic molecules, of every frame of a reaction path, and of an anion that needs
+  `--charge`.
+data:
+- path: files/nmr_iPr.xyz
+  about: organic molecule, 39 atoms
+- path: files/nmr.xyz
+  about: organic molecule, 35 atoms
+- path: files/reaction_path.xyz
+  about: 30 frames of a displacement path, 205 atoms
+- path: files/test.out
+  about: ORCA, r²SCAN-3c Opt Freq, C9H8NS, charge −1
+steps:
+- text: |
+    **1. Two single-structure files.**
+  cmd: frog-stereocenters files/nmr_iPr.xyz files/nmr.xyz
+  after: |
+    `nmr_iPr.xyz` has two stereocentres, C0 (S) and C2 (R); `nmr.xyz` has one, C2 (R). Atom numbers are
+    0-based.
+- text: |
+    **2. Multi-structure file**, as CSV (first lines).
+  cmd: frog-stereocenters files/reaction_path.xyz --format csv -q
+  output: head:7
+  after: |
+    For a multi-structure file the extra *Conf* column (0-based) gives the structure. Along the path,
+    C73 and C80 are R in every frame shown, so the configuration does not change.
+- text: |
+    **3. An anion**: first with the default charge 0, then with `--charge -1`.
+  cmd: frog-stereocenters files/test.out; frog-stereocenters files/test.out --charge -1
+  after: |
+    With the default charge 0, RDKit cannot assign bond orders to the anion: *Final molecular charge (0)
+    does not match input (-1)*. With `--charge -1` the bonds are perceived and the molecule has no
+    stereocentre.

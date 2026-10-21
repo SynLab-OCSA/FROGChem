@@ -1,0 +1,35 @@
+intro: |
+  Buried volume around Ru in the Ru complex optimised with ORCA: first with every ligand, then for the
+  diphosphine ligand alone.
+data:
+- path: files/opt.out
+  about: ORCA, r²SCAN-3c OptTS Freq (transition state), Ru complex C45H42F3IO2P2Ru (Ru = atom 36, CO carbon = 37, P = 2 and 3)
+steps:
+- text: |
+    **1. All atoms**, +Z towards the CO carbon (atom 37), X towards P3; SVG and PNG map.
+  cmd: frog-steric files/opt.out --center 36 -z 37 -x 3 -m --png
+  images:
+  - path: files/opt_steric_map.png
+    caption: Steric map of the whole Ru complex seen from +Z (towards the CO ligand); colour = height of the van
+      der Waals surface (Å), sphere radius 3.5 Å.
+    width: 60%
+  after: |
+    * With every ligand included the sphere is almost full: %V_bur = 96.03 %, quadrants 92.05–98.17 %.
+    * The least crowded octant is Front SW (86.3 %), on the CO side (+Z); the back half is 97.3–99.3 %.
+    * The PNG was produced with `--png` (needs cairo). In the PNG the subscript of the %V_Bur label is
+      drawn too low; the SVG below shows the label correctly.
+- text: |
+    **2. The diphosphine ligand alone.** All atoms that do not belong to it (atoms 37–53 and 90–95,
+    i.e. CO, I and the other two ligands) are excluded with `-E`; `--no-excluded-on-top` does not draw them
+    again on top of the map.
+  cmd: frog-steric files/opt.out --center 36 -z 37 -x 3 -E 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53
+    90 91 92 93 94 95 -m --no-excluded-on-top
+  images:
+  - path: files/opt_steric_map.svg
+    caption: Steric map of the diphosphine ligand only (same orientation as above).
+    width: 60%
+  after: |
+    * The diphosphine alone buries 48.29 % of the sphere. Its pocket is strongly asymmetric: NW is
+      empty (0.00 %), while SE is the most crowded quadrant (81.35 %).
+    * The excluded atoms are still drawn, under the map (visible in the empty NW quadrant):
+      `--no-excluded-on-top` only removes the extra copy that is normally drawn on top of the map.

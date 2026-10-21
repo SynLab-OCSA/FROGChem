@@ -1,0 +1,33 @@
+intro: |
+  λ-RMSD along the 18-conformer Ag complex ensemble, with and without hydrogens, and a check of what
+  the method cannot see (enantiomers).
+data:
+- path: files/ensemble.xyz
+  about: 18 conformers of an Ag complex, 168 atoms
+- path: files/nmr_iPr.xyz
+  about: organic molecule with two stereocentres, 39 atoms
+steps:
+- text: |
+    **1. Every conformer against the first one** (all atoms).
+  cmd: frog-rmsd files/ensemble.xyz
+  after: |
+    Conformer 0 is the reference (0.000). Conformers 4 (0.504 Å) and 11 (0.611 Å) are the closest to it,
+    conformers 15 (5.051 Å) and 16 (4.823 Å) the most different. Both belong to the family with a
+    positive P50–Ag0–C4–N3 dihedral (see the `frog-internals` and `frog-sort` examples), unlike
+    conformer 0.
+- text: |
+    **2. Heavy atoms only**, as CSV.
+  cmd: frog-rmsd files/ensemble.xyz --no-hydrogen --format csv -q
+  after: |
+    Without hydrogens all values are smaller (e.g. conformer 15: 3.067 Å instead of 5.051 Å), because the
+    H atoms are left out of the distance matrix. The ranking is almost the same. Compare values only
+    within one setting, never with and without `--no-hydrogen`.
+- hidden: true
+  cmd: frog-mirror files/nmr_iPr.xyz
+- text: |
+    **3. Enantiomers.** `files/nmr_iPr_mirror.xyz` is the mirror image of `files/nmr_iPr.xyz`
+    (written by `frog-mirror` in a hidden step).
+  cmd: frog-rmsd files/nmr_iPr_mirror.xyz -r files/nmr_iPr.xyz
+  after: |
+    The two enantiomers give exactly 0.000: reflection does not change any distance. Use
+    `frog-stereocenters` to tell enantiomers apart.

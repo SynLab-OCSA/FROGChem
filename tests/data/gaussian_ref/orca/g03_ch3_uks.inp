@@ -1,0 +1,10 @@
+# Twin of gaussian/g03_ch3_uks.gjf: CH3 radical doublet, unrestricted (alpha and beta MOs, spin density)
+! UKS B3LYP/G def2-TZVP NoRI TightSCF DefGrid3 PrintBasis PrintMOs
+%pal nprocs 40 end
+%maxcore 1500
+* xyz 0 2
+ C      0.000000     0.000000     0.000000
+ H      1.079000     0.000000     0.000000
+ H     -0.539500     0.934441     0.000000
+ H     -0.539500    -0.934441     0.000000
+*

@@ -1,0 +1,53 @@
+intro: |
+  Two ORCA NMR jobs from `files/`. `NMR_ORCA.out` has ¹H shieldings and H–H couplings
+  (`%eprnmr nuclei = all H {shift, SSALL}`) for C18H16O4S. `nmr.out` has ¹H, ¹³C, ¹⁵N and ¹⁰⁷Ag shieldings for
+  a 204-atom Ag₄ complex. Both use the built-in default references, as no TMS output is available.
+data:
+  - path: files/NMR_ORCA.out
+    about: ORCA, B3LYP D4 def2-TZVPP CPCM(CHCl3) NMR, J(H,H), C18H16O4S
+  - path: files/nmr.out
+    about: ORCA, B3LYP D4 def2-TZVPP CPCM(CHCl3) NMR, H/C/N/Ag shieldings and couplings, C60H84Ag4N24O32
+steps:
+  - text: |
+      **1. Proton shifts, couplings and NOE.** Only the first part of the output is shown.
+    cmd: frog-nmr files/NMR_ORCA.out -n H
+    output: head:48
+    after: |
+      * With `-n H` only the 16 protons are listed (Index 23–38, labels H24–H39). Since no `--ref` is given,
+        the default 1H reference is used: δ = 31.8 − σ for these values (e.g. H26: σ 23.443 → δ 8.357 ppm).
+      * The output has 16 H atoms, more than the 15-atom limit for matrices, so J is printed as a pair list.
+        Geminal couplings are negative: H30/H31 −11.995 Hz (a CH₂), and H37–H39 about −9 Hz, inside the
+        methyl group, which is not visible in the spectrum. The ortho couplings of the aromatic rings are
+        6.426–6.916 Hz.
+      * The NOE table that follows (cut here) lists the H···H pairs within 5 Å (`--r-cutoff`)
+        with their relative NOE.
+  - text: |
+      **2. Simulated ¹H and COSY spectra at 400 MHz.**
+    cmd: frog-nmr files/NMR_ORCA.out --sim-1d --cosy --freq 400 --plot --dpi 150
+    images:
+      - path: files/NMR_ORCA_1d_1h.png
+        caption: Simulated ¹H spectrum (400 MHz, full spin simulation, methyl H merged).
+        width: 80%
+      - path: files/NMR_ORCA_cosy_1h_1h.png
+        caption: Simulated ¹H–¹H COSY.
+        width: 70%
+    after: |
+      The three methyl protons H37–H39 are merged into one 3H signal at 4.248 ppm (the mean σ, 27.552 ppm).
+      This gives the tallest line of the 1D spectrum. All the other protons are single signals: the molecule
+      has no other symmetry. The multiplets come from the exact spin simulation with the computed J, and the
+      ppm axis decreases to the right. In the COSY, the cross peaks connect the coupled aromatic protons
+      (6.7–8.4 ppm) and the signals near 3.9–4.2 ppm.
+  - text: |
+      **3. Edited ¹H–¹³C HSQC of the large complex.** The signal tables are long, so only the end of the
+      output is shown.
+    cmd: frog-nmr files/nmr.out -n 1H 13C --hsqc --freq 400 --plot --dpi 150
+    output: tail:4
+    images:
+      - path: files/nmr_hsqc_1h_13c.png
+        caption: Simulated multiplicity-edited HSQC (CH/CH₃ positive, CH₂ negative).
+        width: 70%
+    after: |
+      Each CH pair with |J| > 40 Hz or r < 1.45 Å gives a cross peak. CH₂ groups (red, negative) appear
+      around δ(¹³C) 75 ppm and δ(¹H) 3–5 ppm; CH and CH₃ are blue. The axes use the default references (no
+      TMS output was available for this method). For a real comparison, pass `--ref tms.out` computed at the
+      same level.

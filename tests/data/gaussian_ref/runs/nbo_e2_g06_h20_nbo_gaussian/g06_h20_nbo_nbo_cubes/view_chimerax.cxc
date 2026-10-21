@@ -1,0 +1,12 @@
+# ChimeraX script to visualize NBO surfaces
+# Open with: chimerax view_chimerax.cxc
+set bgColor white
+open g06_h20_nbo_e2p1_donor_e2p2_donor_nbo4_LP_O_1.cube
+volume #1 level 0.0500 color #3b82f6 transparency 0.3
+volume #1 level -0.0500 color #ef4444 transparency 0.3
+open g06_h20_nbo_e2p1_acceptor_nbo16_RYstar_H_2.cube
+volume #2 level 0.0500 color #3b82f6 transparency 0.3
+volume #2 level -0.0500 color #ef4444 transparency 0.3
+open g06_h20_nbo_e2p2_acceptor_nbo20_RYstar_H_3.cube
+volume #3 level 0.0500 color #3b82f6 transparency 0.3
+volume #3 level -0.0500 color #ef4444 transparency 0.3

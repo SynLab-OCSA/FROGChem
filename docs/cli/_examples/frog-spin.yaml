@@ -1,0 +1,37 @@
+intro: |
+  Spin-density cubes of the methyl radical (UKS B3LYP/def2-TZVP, doublet). They were written by
+  `frog-density --spin` from the ORCA output and from its Gaussian 16 twin and are stored in the test data.
+  The commands below `cd` into the cube folder to keep the table titles short.
+data:
+  - path: tests/data/gaussian_ref/runs/cubes_g03_ch3_uks_orca/g03_ch3_uks_spin_density.cube
+    about: spin density from `orca/g03_ch3_uks.out`
+  - path: tests/data/gaussian_ref/runs/cubes_g03_ch3_uks_gaussian/g03_ch3_uks_spin_density.cube
+    about: spin density from `gaussian/g03_ch3_uks.log`
+steps:
+  - text: |
+      **0. The grid.** The cube header gives 4 atoms, the origin, and 40 points along each axis with the
+      spacing in Bohr (positive counts = Bohr).
+    cmd: head -6 tests/data/gaussian_ref/runs/cubes_g03_ch3_uks_orca/g03_ch3_uks_spin_density.cube
+  - text: |
+      **1. Spin on every atom** (ORCA cube).
+    cmd: cd tests/data/gaussian_ref/runs/cubes_g03_ch3_uks_orca && frog-spin g03_ch3_uks_spin_density.cube
+    after: |
+      * The total is 0.9996, i.e. one unpaired electron, as expected for a doublet. The 0.04 % missing comes
+        from the finite box and the grid.
+      * The carbon holds 0.6820 (68.2 %) and the three H together about 0.32.
+      * The three H are equivalent by symmetry but get 0.1208, 0.0984 and 0.0984. On a coarse grid
+        (0.29–0.38 Bohr) the nearest-atom cells of equivalent atoms contain different numbers of voxels.
+        Use a finer grid (smaller `--spacing` in `frog-density`) when atom-level differences matter.
+  - text: |
+      **2. Fragments, Gaussian cube.** `--fragment C:0 --fragment CH3_H:1-3` (0-based, inclusive range).
+    cmd: cd tests/data/gaussian_ref/runs/cubes_g03_ch3_uks_gaussian && frog-spin g03_ch3_uks_spin_density.cube --fragment C:0 --fragment CH3_H:1-3 -q
+    after: |
+      The Gaussian cube gives the same partition as the ORCA one: 0.6820 on C and 0.3176 on the hydrogens.
+  - text: |
+      **3. Compare with the program's own spin populations** (Mulliken, from the ORCA output).
+    cmd: grep -A7 "MULLIKEN ATOMIC CHARGES AND SPIN" tests/data/gaussian_ref/orca/g03_ch3_uks.out
+    after: |
+      Mulliken puts more than one electron on C (1.108538) and a *negative* spin on each H (−0.036179):
+      the spin polarisation of the C–H bonds. The Voronoi cells of the H atoms also contain the tails of the
+      carbon p lobes, so they come out positive. Both are valid partitions of the same density but answer
+      different questions. Compare numbers only within one scheme.

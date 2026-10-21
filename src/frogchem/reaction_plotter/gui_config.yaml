@@ -1,0 +1,260 @@
+PALETTES:
+  Pacific Sunset (Custom):
+  - '#D53302'
+  - '#FCC560'
+  - '#A0CBAD'
+  - '#8FB1D0'
+  - '#000145'
+  JACS / ACS Blue & Crimson:
+  - '#7D6608'
+  - '#D35400'
+  - '#C0392B'
+  - '#8DA9C4'
+  - '#134074'
+  - '#0B2545'
+  Colorblind-Safe (Wong/Tol):
+  - '#0072B2'
+  - '#D55E00'
+  - '#009E73'
+  - '#F0E442'
+  - '#CC79A7'
+  - '#56B4E9'
+  Nordic Muted Harmony:
+  - '#BF616A'
+  - '#EBCB8B'
+  - '#A3BE8C'
+  - '#88C0D0'
+  - '#5E81AC'
+  - '#2E3440'
+  Nature / Science Classic:
+  - '#103E84'
+  - '#1F56A3'
+  - '#58A4E0'
+  - '#E05858'
+  - '#3DAA65'
+  - '#9B59B6'
+  Busso's palette:
+  - '#9398f8'
+  - '#bdbffa'
+  - '#25408f'
+  - '#b984b6'
+THEMES:
+  Custom (Keep current): {}
+  JACS / ACS Classic:
+    point_type: bar
+    curviness: 0.35
+    fig_w: 8.5
+    fig_h: 5.5
+    palette: JACS / ACS Blue & Crimson
+  Nature / Springer:
+    point_type: hollow
+    curviness: 0.42
+    fig_w: 10.5
+    fig_h: 6.5
+    palette: Pacific Sunset (Custom)
+  ChemDraw Clean:
+    point_type: bar
+    curviness: 0.0
+    fig_w: 9.0
+    fig_h: 5.5
+    palette: Nordic Muted Harmony
+  Slide / Thesis (High-Contrast):
+    point_type: hollow
+    curviness: 0.45
+    fig_w: 12.0
+    fig_h: 7.0
+    palette: Colorblind-Safe (Wong/Tol)
+PRESETS:
+  Blank / Custom:
+    title: Reaction Energy Profile
+    units: kcal/mol
+    point_type: hollow
+    has_photo: false
+    photo_step: 0
+    show_xticks: true
+    show_legend: true
+    fig_w: 10.0
+    fig_h: 6.0
+    curviness: 0.42
+    font_size: 11
+    steps:
+    - Step 0
+    - Step 1
+    - Step 2
+    label_energy:
+    - false
+    - false
+    - false
+    is_ts:
+    - false
+    - false
+    - false
+    pathways:
+    - name: Path 1
+      color: '#103E84'
+      style: solid
+      energies:
+      - 0.0
+      - 10.0
+      - 0.0
+  General Photochemical (S0 -> S1 -> Branches):
+    title: General Photochemical Mechanism
+    units: kcal/mol
+    point_type: hollow
+    has_photo: true
+    photo_step: 0
+    show_xticks: false
+    show_legend: true
+    fig_w: 12.0
+    fig_h: 7.0
+    curviness: 0.42
+    font_size: 11
+    steps:
+    - Reactant $\mathbf{S_0}$
+    - Reactant $\mathbf{S_1}$
+    - Reactant $\mathbf{T_1}$
+    label_energy:
+    - false
+    - false
+    - false
+    is_ts:
+    - false
+    - false
+    - false
+    pathways:
+    - name: Main Trunk
+      color: '#103E84'
+      style: solid
+      energies:
+      - 0.0
+      - 70.0
+      - 68.0
+    - name: Branch A
+      color: '#1F56A3'
+      style: solid
+      energies:
+      - null
+      - null
+      - null
+    - name: Branch B
+      color: '#58A4E0'
+      style: dashed
+      energies:
+      - null
+      - null
+      - null
+  Catalytic Cycle (R -> TS1 -> Int -> TS2 -> P):
+    title: Catalytic Cycle Energy Profile
+    units: kcal/mol
+    point_type: bar
+    has_photo: false
+    photo_step: 0
+    show_xticks: true
+    show_legend: true
+    fig_w: 10.0
+    fig_h: 6.0
+    curviness: 0.42
+    font_size: 11
+    steps:
+    - Reactants
+    - TS1
+    - Intermediate
+    - TS2
+    - Products
+    label_energy:
+    - false
+    - true
+    - false
+    - true
+    - false
+    is_ts:
+    - false
+    - true
+    - false
+    - true
+    - false
+    pathways:
+    - name: Catalytic Pathway
+      color: '#103E84'
+      style: solid
+      energies:
+      - 0.0
+      - 22.4
+      - 8.2
+      - 19.5
+      - -14.2
+  Competitive Pathways (Major vs Minor TS):
+    title: Bifurcating Reaction Profile
+    units: kcal/mol
+    point_type: hollow
+    has_photo: false
+    photo_step: 0
+    show_xticks: true
+    show_legend: true
+    fig_w: 10.5
+    fig_h: 6.5
+    curviness: 0.42
+    font_size: 11
+    steps:
+    - Reactants
+    - Intermediate
+    - TS-Major / TS-Minor
+    - Products
+    label_energy:
+    - false
+    - false
+    - true
+    - false
+    is_ts:
+    - false
+    - false
+    - true
+    - false
+    pathways:
+    - name: Major Pathway
+      color: '#103E84'
+      style: solid
+      energies:
+      - 0.0
+      - 5.2
+      - 16.4
+      - -12.0
+    - name: Minor Pathway
+      color: '#E05858'
+      style: dashed
+      energies:
+      - 0.0
+      - 5.2
+      - 21.8
+      - -4.5
+  Simple 1-Step (R -> TS -> P):
+    title: Single Step Activation Barrier
+    units: kcal/mol
+    point_type: bar
+    has_photo: false
+    photo_step: 0
+    show_xticks: true
+    show_legend: true
+    fig_w: 8.0
+    fig_h: 5.5
+    curviness: 0.42
+    font_size: 11
+    steps:
+    - Reactants
+    - TS
+    - Products
+    label_energy:
+    - false
+    - true
+    - false
+    is_ts:
+    - false
+    - true
+    - false
+    pathways:
+    - name: Reaction Path
+      color: '#103E84'
+      style: solid
+      energies:
+      - 0.0
+      - 18.5

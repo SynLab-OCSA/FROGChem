@@ -1,0 +1,38 @@
+intro: |
+  Mirror image of a molecule with two stereocentres, checked with `frog-stereocenters`, and of a
+  small multi-structure file.
+data:
+- path: files/nmr_iPr.xyz
+  about: C/H/O organic molecule with two stereocentres, 39 atoms
+- path: files/multi.xyz
+  about: three 4-atom test structures with comment lines
+steps:
+- text: |
+    **1. Write the enantiomer.**
+  cmd: frog-mirror files/nmr_iPr.xyz
+  after: |
+    One structure in, one structure out: `files/nmr_iPr_mirror.xyz` is written next to the input.
+- hidden: true
+  cmd: xyzrender files/nmr_iPr.xyz --stereo --no-orient -o nmr_iPr.png && xyzrender files/nmr_iPr_mirror.xyz --stereo
+    --no-orient -o nmr_iPr_mirror.png
+- text: |
+    **2. Check the configurations** of the original and of the mirrored file.
+  cmd: frog-stereocenters files/nmr_iPr.xyz files/nmr_iPr_mirror.xyz
+  images:
+  - path: nmr_iPr.png
+    caption: '`files/nmr_iPr.xyz` (xyzrender, hydrogens hidden, R/S labels from the 3D geometry).'
+    width: 48%
+  - path: nmr_iPr_mirror.png
+    caption: '`nmr_iPr_mirror.xyz`, drawn in the same frame: x is inverted and every label is swapped.'
+    width: 48%
+  after: |
+    C0 is S in the input and R in the mirror image, C2 is R and becomes S: the mirrored file is the
+    enantiomer. In the drawings (same camera, no re-orientation) the molecule is flipped left–right.
+- text: |
+    **3. Multi-structure file into another folder.** Comment lines are copied unchanged.
+  cmd: frog-mirror files/multi.xyz --out-dir mirrored
+  show_files:
+  - path: mirrored/multi_mirror.xyz
+  after: |
+    The three structures keep their order and their comment lines (`Comment 1`, `Comment 2`,
+    `Comment 3`); only the sign of x changes (`-0.000000` is a zero coordinate with its sign inverted).

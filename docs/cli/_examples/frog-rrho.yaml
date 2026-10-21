@@ -1,0 +1,28 @@
+intro: |
+  Two ORCA r²SCAN-3c frequency jobs from the `files/` folder: a transition state of a Ru complex
+  (`OptTS Freq`) and a small closed-shell organic molecule that is a true minimum.
+data:
+  - path: files/opt.out
+    about: ORCA, r²SCAN-3c OptTS Freq (transition state), Ru complex C45H42F3IO2P2Ru
+  - path: files/test.out
+    about: ORCA, r²SCAN-3c Opt Freq, C9H8NS
+steps:
+  - text: |
+      **1. Thermochemistry at 298.15 K and 1 atm** (Grimme quasi-RRHO, cut-off 100 cm⁻¹).
+    cmd: frog-rrho files/opt.out files/test.out
+    after: |
+      * `G-E` is the thermal correction: 0.68 Eh (≈ 425 kcal/mol) for the 96-atom Ru complex and 0.11 Eh
+        for the 19-atom molecule. It grows with the number of atoms.
+      * `files/opt.out` is a transition state: exactly one imaginary frequency (−180.94 cm⁻¹) is expected,
+        and it is left out of the thermochemistry. Check that the mode is the reaction coordinate
+        (`frog-hessian`). A minimum must show `-`, as `files/test.out` does.
+      * For `files/test.out` the G printed here matches ORCA's *Final Gibbs free energy*, because the
+        molecule is C1 and the defaults match ORCA's.
+  - text: |
+      **2. Same molecule at another temperature with Truhlar's model.** Only the thermal part changes; E stays
+      the same.
+    cmd: frog-rrho files/test.out -T 195 -m truhlar
+  - text: |
+      **3. Machine-readable output.** `--format csv` (or `json`) prints the same table for scripts and
+      spreadsheets, and `-q` hides the messages.
+    cmd: frog-rrho files/opt.out files/test.out --format csv -q

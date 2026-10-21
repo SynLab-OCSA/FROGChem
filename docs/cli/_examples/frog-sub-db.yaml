@@ -1,0 +1,26 @@
+intro: |
+  Only the read-only subcommands are shown. `add`, `add-smiles`, `edit` and `remove` write to
+  `frogchem/substituter/data` inside the installed package, and no option points them at a scratch copy.
+  Running them here would change the library of every user of this installation.
+steps:
+  - text: |
+      **1. Scope presets** for `frog-substitute --scope`.
+    cmd: frog-sub-db scopes
+    after: |
+      * There are 14 presets. A fragment can belong to several of them, e.g. `PPh2` is in `phosphines`, `ligands`
+        and `steric`.
+      * The presets are fixed lists in the code. `--scope` also accepts a category, a tag, `all`, or a
+        comma-separated list of names.
+  - text: |
+      **2. Fragments of one category** (`--category`; use `--tag` to filter by tag).
+    cmd: frog-sub-db list --category aryls
+    after: |
+      * All 17 aryls have Delete 0 and Attach 1. They were generated from SMILES that start with `*`, so atom 0 is
+        the H that replaced the `*`, and atom 1 is the ipso carbon that bonds to the molecule.
+      * The names in the first column are the ones to pass to `frog-substitute --db-frag` / `--db-frags`.
+  - text: |
+      **3. Machine-readable list.** Global options go before the subcommand.
+    cmd: frog-sub-db -q --format csv list --tag halogen
+    after: |
+      `--tag halogen` matches 4 fragments. `iodo` carries only the `halogen` tag, while the other three are also
+      tagged `ewg`. `--format csv` writes the table title as a `#` comment line.

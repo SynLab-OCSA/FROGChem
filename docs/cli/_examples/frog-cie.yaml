@@ -1,0 +1,50 @@
+intro: |
+  A hidden step first turns two TD-DFT jobs into absorption spectra with `frog-tddft --uv --save-spectra`.
+  The window is 1.5–6.5 eV (190–827 nm), so the visible range is covered. Each CSV is then resampled on a
+  whole-nanometre grid (380–780 nm, 1 nm step) with the columns `wavelength` and `intensity`. This step is
+  needed because the raw `frog-tddft` CSV currently fails in `frog-cie` (see the note at the end). The
+  curves are normalised to 1 at their maximum, so `--spectrum-type absorption` treats each one as
+  absorbance 1 at its strongest band.
+data:
+  - path: files/soc.out
+    about: ORCA, PBE0 D4 def2-TZVPP CPCM(CHCl3), TD-DFT 1 root + triplets + SOC (S1 2.778 eV), C28H25BBrN
+  - path: files/1_p8_orca.out
+    about: ORCA, CAM-B3LYP D4 def2-TZVPP CPCM(hexane), TD-DFT 50 roots (S1 3.669 eV), C26H19BBrN
+steps:
+  - cmd: >-
+      frog-tddft files/soc.out files/1_p8_orca.out --uv --save-spectra --x-start 1.5 --x-end 6.5
+      --out-dir cie -o cie/both -q &&
+      python -c "import numpy as np, pandas as pd;
+      [pd.DataFrame({'wavelength': np.arange(380, 781),
+      'intensity': np.interp(np.arange(380, 781), *pd.read_csv(f'cie/{s}_UV.csv').iloc[::-1, 1:3].to_numpy().T)}
+      ).to_csv(f'cie/{s}.csv', index=False) for s in ('soc', '1_p8_orca')]"
+    hidden: true
+  - text: |
+      **1. Perceived colour of the two absorbers** under daylight (D65).
+    cmd: frog-cie cie/soc.csv cie/1_p8_orca.csv --spectrum-type absorption -o cie/cie_absorption.png --dpi 150
+    after: |
+      * `soc` (one band at 2.778 eV ≈ 446 nm, blue) removes blue light: what is transmitted is seen at
+        x 0.3909, y 0.4619, in the yellow region.
+      * `1_p8_orca` gives x 0.3127, y 0.3290, the D65 white point itself. Its lowest band (S1 at 3.669 eV ≈
+        338 nm) lies in the near UV. With the 0.3 eV default width, its tail does not reach the visible range.
+        The simulated sample is colourless.
+  - text: |
+      **2. Add reference points.** A small CSV with the D65 white point is written on the fly and passed with
+      `--external-coordinates`. Reference points are drawn as crosses.
+    cmd: >-
+      printf 'Name,CIEx,CIEy\nD65 white,0.3127,0.3290\n' > cie/ref.csv &&
+      frog-cie cie/soc.csv cie/1_p8_orca.csv --spectrum-type absorption --external-coordinates cie/ref.csv
+      -o cie/cie_absorption.png --dpi 150 -q
+    images:
+      - path: cie/cie_absorption.png
+        caption: CIE 1931 diagram; each simulated absorber in its own sRGB colour, D65 white point as a cross.
+        width: 70%
+    after: |
+      The `1_p8_orca` dot sits on the white-point cross. The `soc` dot is displaced towards yellow, the
+      complement of the blue light the compound absorbs.
+outro: |
+  **Note.** `frog-cie` should read the CSV written by `frog-tddft --save-spectra` directly (`--wl
+  Wavelength_nm --int <curve column>`). At the moment this fails with *No spectrum could be converted*. The
+  1-nm interpolation of the non-uniform wavelength grid keeps non-integer end points, and colour-science
+  then rejects the interval (0.9997 nm). Until this is fixed, resample the curve on whole nanometres as in
+  the hidden step above.
