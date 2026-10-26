@@ -84,6 +84,18 @@ class TestGaussianTDDFT:
         assert ecd[0, 1] == -12.3456
         assert ecd[1, 1] == 25.6789
 
+    def test_parse_ecd_prefers_length_gauge(self):
+        # G16 prints R(velocity), then R(length), then the dipole strengths: R(length) is used (as ORCA)
+        sample = SAMPLE_GAUSSIAN_ECD + """ 1   0.1000   0.2000   0.3000    -3.1200
+ 2   0.1000   0.2000   0.3000    22.9100
+  1/2[<0|del|b>*<b|r|0> + (<0|r|b>*<b|del|0>)*] (Au)
+ 1   0.0001   0.0025   0.0018    0.0045    0.0030
+ 2   0.0080   0.0457   0.0105    0.0642    0.0428
+"""
+        ecd = parse_ecd(sample, REGEXS)
+        assert ecd[0, 1] == -3.12
+        assert ecd[1, 1] == 22.91
+
     def test_parse_ecd_missing(self):
         ecd = parse_ecd("No ecd", REGEXS)
         assert ecd.shape == (1, 2)

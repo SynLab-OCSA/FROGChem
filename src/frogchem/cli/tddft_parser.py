@@ -623,7 +623,8 @@ class TddftParser(CLICommand, name='frog-tddft'):
         ],
         expect="""
             **Excited States Summary**: one row per state with its label, multiplicity, **Energy (eV)**,
-            **f** (dimensionless), **R** (rotatory strength, 10⁻⁴⁰ cgs), **<S\\*\\*2>** and the orbital
+            **f** (dimensionless), **R** (rotatory strength, 10⁻⁴⁰ cgs, length gauge for both ORCA and
+            Gaussian: Gaussian's `R(length)` column, not `R(velocity)`), **<S\\*\\*2>** and the orbital
             transitions with their weight, e.g. `H->L (0.99)` (H = HOMO, L = LUMO, H-1 = HOMO−1; α/β marks the
             spin in open-shell runs). States are labelled per multiplicity: **S1, S2… T1, T2… D1… Q1…**
             (S0 is the ground state), and the same labels are used in the SOC matrix and in `--dct-states`.

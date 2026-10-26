@@ -14,20 +14,29 @@ def parse_uv(fl, reg):
     return np.column_stack((data[:, 0], data[:, 1]))
 
 
+def _strengths(block, reg):
+    return np.array(re.findall(reg['ecd_pattern'], block, flags=re.MULTILINE), dtype=np.float64)
+
+
 def parse_ecd(fl, reg):
+    """(energy eV, R) per state, R = rotatory strength in 1e-40 cgs.
+
+    Uses the length-gauge R (the 'R(length)' table), the gauge of ORCA's CD spectrum, so both programs
+    give comparable numbers; falls back to the velocity-gauge table ('R(velocity)') if the length one
+    is missing.
+    """
     if reg['ecd_section_start'] not in fl:
         return np.zeros(shape=(1, 2))
 
-    block = fl.split(reg['ecd_section_start'])[-1].split(reg['ecd_section_end'])[0]
-    strengths = np.array(re.findall(reg['ecd_pattern'], block, flags=re.MULTILINE), dtype=np.float64)
-    if len(strengths) == 0:
-        return np.zeros(shape=(1, 2))
-
     uv = parse_uv(fl, reg)
-    if uv.shape[0] != len(strengths):
-        return np.zeros(shape=(1, 2))
-
-    return np.column_stack((uv[:, 0], strengths))
+    tail = fl.split(reg['ecd_section_start'])[-1]
+    velocity, _, length = tail.partition(reg['ecd_section_end'])
+    length = length.split(reg['ecd_length_end'])[0].split(reg['tddft_start'])[0]
+    for block in (length, velocity):
+        strengths = _strengths(block, reg)
+        if len(strengths) and len(strengths) == uv.shape[0]:
+            return np.column_stack((uv[:, 0], strengths))
+    return np.zeros(shape=(1, 2))
 
 
 _MULT_NAMES = {'singlet': 1, 'doublet': 2, 'triplet': 3, 'quartet': 4, 'quintet': 5,
@@ -53,7 +62,7 @@ def parse_tddft_states(fl, reg) -> dict:
 
     Each state holds 'energy' (eV), 'fosc', 'S**2', 'population' (list of
     (from, to, weight[, spin]) with 0-based MO indices) and, when the rotatory strengths are
-    printed, 'R' (1e-40 cgs, as returned by :func:`parse_ecd`). The weight is 2c² for
+    printed, 'R' (length gauge, 1e-40 cgs, as returned by :func:`parse_ecd`). The weight is 2c² for
     restricted (closed-shell) excitations and c² for unrestricted (A/B labelled) ones;
     de-excitation ('<-') lines are ignored.
 
