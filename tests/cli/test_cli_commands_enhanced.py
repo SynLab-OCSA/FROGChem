@@ -158,7 +158,40 @@ class TestCreateCrestInputCLI:
         assert "$metadyn\n  atoms: 3-4\n$end\n" in text
 
         with pytest.raises(SystemExit):
-            CreateCrestInput().main([str(f), "-i", "0", "1", "2", "3", "--exclude-mtd", "-o", str(out_inp)])
+            CreateCrestInput().main([str(f), "-a", "0", "1", "2", "3", "--exclude-mtd", "-o", str(out_inp)])
+
+    def test_crest_internals(self, tmp_path):
+        f = tmp_path / "chain.xyz"
+        coords = np.array([[0.0, 0.0, 0.0], [1.5, 0.0, 0.0], [1.5, 1.5, 0.0], [1.5, 1.5, 1.5]])
+        write_xyz(str(f), [["C", "C", "C", "C"]], [coords], ["test"])
+        out_inp = tmp_path / "constrain.inp"
+        CreateCrestInput().main([str(f), "-i", "0", "1", "-i", "0", "1", "2", "-i", "0", "1", "2", "3",
+                                 "-o", str(out_inp)])
+        text = out_inp.read_text()
+        assert "  distance: 1, 2, 1.5000\n" in text
+        assert "  angle: 1, 2, 3, 90.0000\n" in text
+        assert "dihedral: 1, 2, 3, 4, " in text
+        # no fixed atoms: no atoms/reference lines
+        assert "atoms:" not in text and "reference=" not in text
+
+        CreateCrestInput().main([str(f), "-a", "0", "-i", "3", "-i", "1", "2", "-o", str(out_inp)])
+        text = out_inp.read_text()
+        assert "  atoms: 1,4\n  distance: 2, 3, 1.5000\n" in text
+        assert "reference=chain.xyz" in text
+
+    def test_crest_five_indices_are_atoms(self, tmp_path):
+        f = tmp_path / "chain.xyz"
+        coords = np.array([[float(i), 0.0, 0.0] for i in range(7)])
+        write_xyz(str(f), [["C"] * 7], [coords], ["test"])
+        out_inp = tmp_path / "constrain.inp"
+        CreateCrestInput().main([str(f), "-i", "0", "1", "2", "3", "5", "-i", "5", "6", "-o", str(out_inp)])
+        text = out_inp.read_text()
+        assert "  atoms: 1-4,6\n  distance: 6, 7, 1.0000\n" in text
+
+    @pytest.mark.parametrize("bad", [["-i", "0", "1", "1"], ["-i", "0", "0"]])
+    def test_crest_invalid_index_set(self, sample_water_xyz, tmp_path, bad):
+        with pytest.raises(SystemExit):
+            CreateCrestInput().main([sample_water_xyz, *bad, "-o", str(tmp_path / "c.inp")])
 
     @pytest.mark.parametrize("extra", [["--mc", "0"], ["-r", "2.0"], []])
     def test_crest_metal_center_requires_radius(self, sample_water_xyz, tmp_path, extra):

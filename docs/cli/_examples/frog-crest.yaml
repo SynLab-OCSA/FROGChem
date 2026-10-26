@@ -9,7 +9,7 @@ data:
 steps:
 - text: |
     **1. Freeze the Ag centre and three donor atoms** of the first conformer.
-  cmd: frog-crest files/ensemble.xyz -i 0 4 50 83 -o crest/constrain.inp
+  cmd: frog-crest files/ensemble.xyz -a 0 4 50 83 -o crest/constrain.inp
   show_files:
   - path: crest/constrain.inp
   - path: crest/ensemble_ref.xyz
@@ -21,7 +21,7 @@ steps:
       `crest ensemble_ref.xyz --cinp constrain.inp`.
 - text: |
     **2. Freeze the Ru coordination sphere of an ORCA output.**
-  cmd: frog-crest files/opt.out -i 2 3 36 37 38 39 40 41 -o ru/constrain.inp
+  cmd: frog-crest files/opt.out -a 2 3 36 37 38 39 40 41 -o ru/constrain.inp
   show_files:
   - path: ru/constrain.inp
   - path: ru/opt_ref.xyz

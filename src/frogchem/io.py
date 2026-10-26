@@ -137,7 +137,8 @@ def write_crest_constraints(
     atom_indexes: List[int], 
     force_constant: float = 0.5, 
     reference_file: str = "coord.ref",
-    metadyn_atoms: Optional[List[int]] = None
+    metadyn_atoms: Optional[List[int]] = None,
+    internals: Optional[List[Tuple[List[int], float]]] = None
 ) -> None:
     """Writes a CREST constraint file (.c).
 
@@ -147,22 +148,30 @@ def write_crest_constraints(
     Args:
         fname (str): The output filename (usually 'constrain.c').
         atom_indexes (List[int]): List of 0-based atom indexes to constrain.
-            They will be converted to 1-based for CREST automatically.
+            They will be converted to 1-based for CREST automatically. If empty,
+            no 'atoms:' and 'reference=' lines are written.
         force_constant (float, optional): The force constant for the constraint. 
             Defaults to 0.5.
         reference_file (str, optional): The name of the reference geometry file. 
             Defaults to "coord.ref".
         metadyn_atoms (List[int], optional): 0-based atoms included in the metadynamics
             bias ($metadyn block); the others are left out of it. None writes no block.
+        internals (List[Tuple[List[int], float]], optional): (0-based atoms, value) pairs;
+            2, 3 or 4 atoms give a distance (Å), angle or dihedral (degrees) constraint.
     """
-    indexes_1based = [i + 1 for i in atom_indexes]
-    compact_str = compact_list_fragments(indexes_1based, range_sep="-", sep=",")
+    kinds = {2: 'distance', 3: 'angle', 4: 'dihedral'}
 
     with open(fname, 'w') as f:
         f.write('$constrain\n')
-        f.write(f'  atoms: {compact_str}\n')
+        if atom_indexes:
+            compact_str = compact_list_fragments([i + 1 for i in atom_indexes], range_sep="-", sep=",")
+            f.write(f'  atoms: {compact_str}\n')
+        for idxs, value in internals or []:
+            atoms_str = ', '.join(str(i + 1) for i in idxs)
+            f.write(f'  {kinds[len(idxs)]}: {atoms_str}, {value:.4f}\n')
         f.write(f'  force constant={force_constant}\n')
-        f.write(f'  reference={reference_file}\n')
+        if atom_indexes:
+            f.write(f'  reference={reference_file}\n')
         if metadyn_atoms is not None:
             mtd_str = compact_list_fragments([i + 1 for i in metadyn_atoms], range_sep="-", sep=",")
             f.write('$metadyn\n')
