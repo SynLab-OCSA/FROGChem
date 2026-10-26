@@ -7,7 +7,7 @@ name = "frogchem"
 version = "0.1.0"
 description = "FROG — Find, Refine, Organize and Graph"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {text = "MIT"} 
 authors = [
     {name = "Andrea Pellegrini", email = "andrea.pellegrini15@unibo.it"},
@@ -31,7 +31,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
@@ -56,6 +55,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gui = [
+    "streamlit",
+]
 docs = [
     "sphinx>=7.0.0",
     "sphinx-rtd-theme>=2.0.0",

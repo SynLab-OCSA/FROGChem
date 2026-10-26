@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -24,15 +25,20 @@ from frogchem.reaction_plotter.config_manager import (
     save_palette,
     save_preset,
 )
-from frogchem.reaction_plotter.gui_utils import (
-    auto_detect_ts,
-    build_dataframe_from_preset,
-    compute_x_coords,
-    dataframe_to_csv_bytes,
-    extract_current_template,
-    init_session_state,
-    parse_pasted_numbers,
-)
+
+# gui_utils imports streamlit, an optional dependency (pip install frogchem[gui])
+HAS_STREAMLIT = importlib.util.find_spec("streamlit") is not None
+needs_streamlit = pytest.mark.skipif(not HAS_STREAMLIT, reason="streamlit not installed")
+if HAS_STREAMLIT:
+    from frogchem.reaction_plotter.gui_utils import (
+        auto_detect_ts,
+        build_dataframe_from_preset,
+        compute_x_coords,
+        dataframe_to_csv_bytes,
+        extract_current_template,
+        init_session_state,
+        parse_pasted_numbers,
+    )
 
 
 def test_config_manager_defaults():
@@ -81,6 +87,7 @@ def test_config_manager_defaults():
         assert "JACS / ACS Classic" in themes
 
 
+@needs_streamlit
 def test_compute_x_coords():
     # Without photo
     assert compute_x_coords(4, has_photo=False) == [0, 1, 2, 3]
@@ -92,12 +99,14 @@ def test_compute_x_coords():
     assert compute_x_coords(4, has_photo=True, photo_step=1) == [0, 1, 1, 2]
 
 
+@needs_streamlit
 def test_parse_pasted_numbers():
     text = "0.0,  15.5; None\t-4.2 \n 20.1 nan"
     vals = parse_pasted_numbers(text)
     assert vals == [0.0, 15.5, None, -4.2, 20.1, None]
 
 
+@needs_streamlit
 def test_auto_detect_ts():
     df = pd.DataFrame({
         "Step Name": ["Reactants", "TS1", "Int", "MECP", "Products"],
@@ -107,6 +116,7 @@ def test_auto_detect_ts():
     assert is_ts == [False, True, False, True, False]
 
 
+@needs_streamlit
 def test_build_dataframe_from_preset_and_csv():
     preset = {
         "title": "Sample",
@@ -131,6 +141,7 @@ def test_build_dataframe_from_preset_and_csv():
     assert "15.0" in csv_str
 
 
+@needs_streamlit
 def test_extract_current_template_and_init_session_state():
     df = pd.DataFrame({
         "Step Name": ["A", "B"],
