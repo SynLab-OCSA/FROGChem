@@ -248,6 +248,11 @@ def test_reference_shielding_from_calculation_object():
         resolve_reference_shielding(calc, '19F')
 
 
+# files/ is gitignored (local test data): tests that read it are skipped elsewhere, e.g. in CI
+needs_nmr_out = pytest.mark.skipif(not Path("files/nmr.out").exists(), reason="files/nmr.out not found")
+
+
+@needs_nmr_out
 def test_reference_shielding_from_file():
     # Using files/nmr.out
     ref_file = "files/nmr.out"
@@ -288,7 +293,10 @@ def test_multiple_reference_specifications():
     assert pytest.approx(convert_shielding_to_shift(25.0, '1H', ref_sigma=ref_str)) == (31.8 - 25.0) / (1 - 31.8e-6)
     assert pytest.approx(convert_shielding_to_shift(120.0, '13C', ref_sigma=ref_str)) == (185.0 - 120.0) / (1 - 185.0e-6)
 
-    # 5. Mixed numeric and file reference: 1H=31.8, 13C=files/nmr.out
+
+@needs_nmr_out
+def test_mixed_numeric_and_file_reference():
+    # Mixed numeric and file reference: 1H=31.8, 13C=files/nmr.out
     ref_mixed = ["1H=31.8", "13C=files/nmr.out"]
     assert pytest.approx(resolve_reference_shielding(ref_mixed, '1H')) == 31.8
     ref_c = resolve_reference_shielding(ref_mixed, '13C')
@@ -323,6 +331,7 @@ def test_nuclei_parsing_and_normalization():
     assert parse_nuclei_list(['1H,13C', '33S']) == ['1H', '13C', '33S']
 
 
+@needs_nmr_out
 def test_calc_nmr_cli_cartesian_product(tmp_path):
     from frogchem.cli.calc_nmr import CalcNmr
     out_stem = str(tmp_path / "cartesian.png")

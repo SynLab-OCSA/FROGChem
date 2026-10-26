@@ -3,6 +3,7 @@ Unit tests for quantum NMR spin simulation, equivalencies, and 2D COSY/NOESY.
 """
 
 import math
+import os
 import numpy as np
 import pytest
 
@@ -531,6 +532,8 @@ def test_dynamic_nuclei_database_and_spin_overrides(tmp_path):
 def test_orca_detected_isotopes_parsing():
     """Verify that NMRAnalysis extracts isotopes and g-factors from ORCA output."""
     from frogchem.orca_parser.calculation import Calculation
+    if not os.path.exists('files/nmr.out'):
+        pytest.skip("files/nmr.out not found")
     calc = Calculation('files/nmr.out')
     assert calc.nmr is not None
     isotopes = calc.nmr.get_isotopes()
