@@ -4,11 +4,20 @@
 import os
 from pathlib import Path
 
+import numpy as np
+
 from frogchem.exceptions import InputError
 from frogchem.filetypes import load_structures
 from frogchem.io import write_crest_constraints, write_xyz
 from frogchem.printer import print_info, print_warning
 from frogchem.cli.base import CLICommand, Guide, Output
+
+
+def atoms_in_spheres(geom, centers, radius: float) -> set:
+    """0-based indices of the atoms within `radius` Å of any atom in `centers` (centres included)."""
+    geom = np.asarray(geom, dtype=float)
+    dist = np.linalg.norm(geom[:, None, :] - geom[list(centers)][None, :, :], axis=-1)
+    return {int(i) for i in np.flatnonzero((dist <= radius).any(axis=1))}
 
 
 class CreateCrestInput(CLICommand, name='frog-crest'):
@@ -50,6 +59,14 @@ class CreateCrestInput(CLICommand, name='frog-crest'):
         how=[
             "Run `frog-crest struc.xyz -i 0 4 50 83` with the 0-based atoms to keep fixed; this writes "
             "`constrain.inp` in the current folder (choose another name/folder with `-o`).",
+            "To freeze a whole coordination sphere, give the metal(s) and a radius instead of (or in addition "
+            "to) `-i`: `frog-crest struc.xyz --mc 0 -r 2.6` constrains atom 0 and every atom within 2.6 Å of "
+            "it; with several centres (`--mc 0 12`) the spheres are merged. The radius is measured from the "
+            "atom centres on the reference geometry (the first structure).",
+            "By default the constrained atoms still feel the metadynamics bias (CREST pushes on every atom). "
+            "Add `--exclude-mtd` to leave them out: a `$metadyn` block then lists only the other atoms, so the "
+            "bias drives the free part of the molecule and the frozen core is not pulled against its "
+            "constraints.",
             "If the input is an ORCA/Gaussian output or a multi-structure XYZ, the reference geometry is also "
             "written as `<stem>_ref.xyz` next to the constraint file; a single-structure XYZ is referenced "
             "directly (path relative to the constraint file).",
@@ -86,12 +103,24 @@ class CreateCrestInput(CLICommand, name='frog-crest'):
     examples = [
         ('frog-crest struc.xyz -i 0 1 2 5', 'Constrain atoms 0, 1, 2 and 5 (0-based) to struc.xyz'),
         ('frog-crest a.xyz b.xyz -i 0 1', 'Write a_constrain.inp and b_constrain.inp'),
+        ('frog-crest struc.xyz --mc 0 -r 2.6', 'Constrain atom 0 and every atom within 2.6 Å of it'),
+        ('frog-crest struc.xyz --mc 0 -r 2.6 --exclude-mtd',
+         'Same, and leave those atoms out of the metadynamics bias'),
     ]
 
     def setup_args(self, parser):
         parser.add_argument('file', nargs='+', help='XYZ, ORCA or Gaussian reference structure(s)')
-        parser.add_argument('-i', '--indices', nargs='+', type=int, required=True, metavar='IDX',
+        parser.add_argument('-i', '--indices', nargs='+', type=int, default=[], metavar='IDX',
                             help='Indices of the atoms to constrain (0-based)')
+        parser.add_argument('--mc', '--metal-center', dest='metal_center', nargs='+', type=int, default=[],
+                            metavar='IDX',
+                            help='Metal centres (0-based): every atom within --radius of any of them is '
+                                 'constrained, the centres included')
+        parser.add_argument('-r', '--radius', type=float, metavar='Å',
+                            help='Sphere radius in Å around each --mc centre')
+        parser.add_argument('--exclude-mtd', action='store_true',
+                            help='Leave the constrained atoms out of the metadynamics bias '
+                                 '($metadyn block listing all the other atoms)')
         self.add_output_arg(parser, default='constrain.inp',
                             help='Constraint file for a single input; with several inputs only its '
                                  'name is used, as tag of <stem>_constrain.inp')
@@ -99,6 +128,12 @@ class CreateCrestInput(CLICommand, name='frog-crest'):
 
     def run(self, args):
         self.require_files(args.file)
+        if not args.indices and not args.metal_center:
+            raise InputError("Give the atoms to constrain with -i and/or --mc")
+        if bool(args.metal_center) != (args.radius is not None):
+            raise InputError("--mc and -r/--radius must be given together")
+        if args.radius is not None and args.radius <= 0:
+            raise InputError(f"--radius must be positive, got {args.radius}")
         multi = len(args.file) > 1
         tag_path = Path(args.output)
         if multi and tag_path.parent != Path('.'):
@@ -111,9 +146,21 @@ class CreateCrestInput(CLICommand, name='frog-crest'):
             if not structs:
                 raise InputError(f"No geometry found in {f}")
             n_atoms = len(structs[0][0])
-            bad = sorted({i for i in args.indices if not 0 <= i < n_atoms})
+            bad = sorted({i for i in args.indices + args.metal_center if not 0 <= i < n_atoms})
             if bad:
                 raise InputError(f"Atom indices {bad} out of range for {f} ({n_atoms} atoms, 0-based)")
+            indices = set(args.indices)
+            if args.metal_center:
+                sphere = atoms_in_spheres(structs[0][1], args.metal_center, args.radius)
+                print_info(f"{len(sphere)} atoms within {args.radius:g} Å of centres {args.metal_center}")
+                indices |= sphere
+            indices = sorted(indices)
+            metadyn = None
+            if args.exclude_mtd:
+                metadyn = sorted(set(range(n_atoms)) - set(indices))
+                if not metadyn:
+                    raise InputError(f"All {n_atoms} atoms of {f} are constrained: "
+                                     "no atom left for the metadynamics with --exclude-mtd")
 
             if multi:
                 out = self.derived_path(f, tag_path.stem, tag_path.suffix or '.inp')
@@ -134,8 +181,9 @@ class CreateCrestInput(CLICommand, name='frog-crest'):
                 write_xyz(str(ref_path), [structs[0][0]], [structs[0][1]], [f"Reference from {Path(f).name}"])
                 self.saved(ref_path, 'reference geometry')
                 reference = ref_path.name
-            print_info(f"Constraining {len(args.indices)} atoms of {f}")
-            write_crest_constraints(fname=str(out), atom_indexes=args.indices, reference_file=reference)
+            print_info(f"Constraining {len(indices)} atoms of {f}")
+            write_crest_constraints(fname=str(out), atom_indexes=indices, reference_file=reference,
+                                    metadyn_atoms=metadyn)
             self.saved(out, 'CREST constraints')
 
 

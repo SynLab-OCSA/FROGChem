@@ -18,8 +18,11 @@ REGEXS = {
     'tddft_start': 'Excitation energies and oscillator strengths',
     'tddft_end': '***',
     'tddft_state': r'Excited State\s+\d+:\s+.*?([-+]?\d+\.\d+) eV.*?f=([-+]?\d+\.\d+)',
+    # Rotatory strengths: velocity-gauge table (R(velocity)), then length-gauge table (R(length)),
+    # then the dipole strengths. The length gauge is used, as in ORCA's CD spectrum.
     'ecd_section_start': '<0|del|b> * <b|rxdel|0> + <0|del|b> * <b|delr+rdel|0>',
     'ecd_section_end': "1/2[<0|r|b>*<b|rxdel|0> + (<0|rxdel|b>*<b|r|0>)*]",
+    'ecd_length_end': '1/2[<0|del|b>*<b|r|0> + (<0|r|b>*<b|del|0>)*]',
     'ecd_pattern': r'^\s*\d+\s+[+-]?\d+\.\d+\s+[+-]?\d+\.\d+\s+[+-]?\d+\.\d+\s+([+-]?\d+\.\d+)',
     'npa_start': 'Summary of Natural Population Analysis',
     'npa_pattern': r'^\s*([A-Z][a-z]?)\s+(\d+)\s+(-?\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)',

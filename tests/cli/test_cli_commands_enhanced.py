@@ -133,6 +133,38 @@ class TestCreateCrestInputCLI:
         cmd.main([sample_water_xyz, "-i", "0", "1", "-o", out_inp])
         assert os.path.exists(out_inp)
 
+    def test_crest_metal_center_sphere(self, tmp_path):
+        f = tmp_path / "mc.xyz"
+        coords = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.5, 0.0],
+                           [5.0, 0.0, 0.0], [10.0, 0.0, 0.0], [11.5, 0.0, 0.0]])
+        write_xyz(str(f), [["Pd", "P", "N", "C", "Cu", "Cl"]], [coords], ["test"])
+        out_inp = tmp_path / "constrain.inp"
+        CreateCrestInput().main([str(f), "--mc", "0", "4", "-r", "2.6", "-i", "3", "-o", str(out_inp)])
+        # sphere of 0 -> 0 1 2, sphere of 4 -> 4 5, plus -i 3: all atoms, 1-based
+        assert "atoms: 1-6\n" in out_inp.read_text()
+
+        CreateCrestInput().main([str(f), "--metal-center", "0", "--radius", "2.1", "-o", str(out_inp)])
+        assert "atoms: 1-2\n" in out_inp.read_text()
+        assert "$metadyn" not in out_inp.read_text()
+
+    def test_crest_exclude_mtd(self, tmp_path):
+        f = tmp_path / "mc.xyz"
+        coords = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [5.0, 0.0, 0.0], [7.0, 0.0, 0.0]])
+        write_xyz(str(f), [["Pd", "P", "C", "C"]], [coords], ["test"])
+        out_inp = tmp_path / "constrain.inp"
+        CreateCrestInput().main([str(f), "--mc", "0", "-r", "2.1", "--exclude-mtd", "-o", str(out_inp)])
+        text = out_inp.read_text()
+        assert "$constrain\n  atoms: 1-2\n" in text
+        assert "$metadyn\n  atoms: 3-4\n$end\n" in text
+
+        with pytest.raises(SystemExit):
+            CreateCrestInput().main([str(f), "-i", "0", "1", "2", "3", "--exclude-mtd", "-o", str(out_inp)])
+
+    @pytest.mark.parametrize("extra", [["--mc", "0"], ["-r", "2.0"], []])
+    def test_crest_metal_center_requires_radius(self, sample_water_xyz, tmp_path, extra):
+        with pytest.raises(SystemExit):
+            CreateCrestInput().main([sample_water_xyz, *extra, "-o", str(tmp_path / "c.inp")])
+
 
 class TestSortDiasteroCLI:
     def test_sort_diastero(self, sample_ensemble_xyz, tmp_path):

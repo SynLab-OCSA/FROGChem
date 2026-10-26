@@ -136,7 +136,8 @@ def write_crest_constraints(
     fname: str, 
     atom_indexes: List[int], 
     force_constant: float = 0.5, 
-    reference_file: str = "coord.ref"
+    reference_file: str = "coord.ref",
+    metadyn_atoms: Optional[List[int]] = None
 ) -> None:
     """Writes a CREST constraint file (.c).
 
@@ -151,15 +152,21 @@ def write_crest_constraints(
             Defaults to 0.5.
         reference_file (str, optional): The name of the reference geometry file. 
             Defaults to "coord.ref".
+        metadyn_atoms (List[int], optional): 0-based atoms included in the metadynamics
+            bias ($metadyn block); the others are left out of it. None writes no block.
     """
     indexes_1based = [i + 1 for i in atom_indexes]
     compact_str = compact_list_fragments(indexes_1based, range_sep="-", sep=",")
 
-    with open(fname, 'w') as f: 
+    with open(fname, 'w') as f:
         f.write('$constrain\n')
         f.write(f'  atoms: {compact_str}\n')
         f.write(f'  force constant={force_constant}\n')
         f.write(f'  reference={reference_file}\n')
+        if metadyn_atoms is not None:
+            mtd_str = compact_list_fragments([i + 1 for i in metadyn_atoms], range_sep="-", sep=",")
+            f.write('$metadyn\n')
+            f.write(f'  atoms: {mtd_str}\n')
         f.write('$end\n')
 
 

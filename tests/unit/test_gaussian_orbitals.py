@@ -311,9 +311,8 @@ def _gaussian_r_length(fl):
 def test_tddft_states_match_orca():
     """td=(50-50,nstates=10) vs ORCA tda false: same S1..S10 / T1..T10, energies, f and R.
 
-    frog reports Gaussian's velocity-gauge R (origin independent); ORCA prints the length-gauge R,
-    which is compared with Gaussian's length-gauge column (they differ by up to ~8 %, the velocity
-    form by up to ~30 % on this molecule).
+    R is the length-gauge value for both programs (Gaussian's 'R(length)' column, ORCA's CD spectrum):
+    within ~8 % on this molecule, while Gaussian's velocity-gauge R differs by up to ~30 %.
     """
     gc = gauss('g05')
     g, o = gc.tddft_states, orca('g05').tddft_states
@@ -326,9 +325,8 @@ def test_tddft_states_match_orca():
             assert abs(sg['energy'] - so['energy']) < 0.01, (mult, n, sg['energy'], so['energy'])
             if mult == 1:
                 assert abs(sg['fosc'] - so['fosc']) < max(0.002, 0.05 * so['fosc']), (n, sg['fosc'], so['fosc'])
-                r = r_length[sg['gaussian_state']]
-                assert abs(r - so['R']) < max(0.5, 0.1 * abs(so['R'])), (n, r, so['R'])
-                assert np.sign(sg['R']) == np.sign(so['R'])
+                assert sg['R'] == r_length[sg['gaussian_state']]
+                assert abs(sg['R'] - so['R']) < max(0.5, 0.1 * abs(so['R'])), (n, sg['R'], so['R'])
 
 
 def test_dct_runs_on_gaussian_and_matches_orca():
