@@ -7,7 +7,9 @@ from frogchem.exceptions import ParseError
 from frogchem.chemistry import get_atomic_weights, atomic_number_to_symbol
 from frogchem.gaussian_parser.regex_gaussian import REGEXS
 from frogchem.gaussian_parser.opt import parse_orientation
-from frogchem.gaussian_parser.hessian import get_freq, get_ir_intensities
+from frogchem.gaussian_parser.hessian import (
+    get_freq, get_ir_intensities, get_normal_modes, align_normal_modes, to_displacements,
+)
 from frogchem.gaussian_parser.tddft import parse_uv, parse_ecd, parse_tddft_states
 from frogchem.gaussian_parser.population import parse_npa_charges, parse_atomic_charges
 from frogchem.gaussian_parser.orbitals import get_MOs, get_overlap, get_basis_coefficients
@@ -34,6 +36,17 @@ class GaussianCalculation(BaseParser):
         if self.has_freq():
             self.freq = get_freq(self.fl, self.reg)
             self.ir_spectrum = get_ir_intensities(self.fl, self.reg)
+            # (3N, n_modes) as in the ORCA parser (columns follow self.freq; no translations/
+            # rotations), rotated from Gaussian's standard orientation to the frame of self.geom
+            modes = get_normal_modes(self.fl, self.reg, N=3 * len(self.atoms))
+            if modes.shape[1] == len(self.freq) and modes.shape[1] > 0:
+                if self._geom_header() == 'Input orientation:':
+                    modes = align_normal_modes(self.fl, modes)
+                self.normal_modes = modes
+                self.displacements = to_displacements(modes, len(self.atoms))
+            else:
+                logger.warning(f"{self.fname}: {modes.shape[1]} normal modes for {len(self.freq)} "
+                               "frequencies, normal modes not stored")
 
         if self.has_tddft():
             self.uv = parse_uv(self.fl, self.reg)
@@ -149,6 +162,10 @@ class GaussianCalculation(BaseParser):
         if len(self.atoms) == 0:
             raise ParseError(f"No atoms to calculate molecular weight in {self.fname}")
         return sum(get_atomic_weights(i) for i in self.atoms)
+
+    def _geom_header(self):
+        """Orientation table used for self.geom (first of reg['geom_headers'] present)."""
+        return next((h for h in self.reg['geom_headers'] if h in self.fl), None)
 
     def has_freq(self):
         return self.reg['freq_section'] in self.fl
