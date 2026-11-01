@@ -7,7 +7,7 @@ from frogchem.exceptions import ParseError
 from frogchem.chemistry import get_atomic_weights
 from frogchem.orca_parser.regex_ORCA import REGEXS
 from frogchem.orca_parser.orbitals import get_MOs_coefficients, get_MOs_energies, get_basis_coefficients
-from frogchem.orca_parser.hessian import get_freq, get_normal_modes, get_hessian_graphs_impulses
+from frogchem.orca_parser.hessian import get_freq, get_normal_modes, get_hessian_graphs_impulses, to_displacements
 from frogchem.orca_parser.opt import get_geom, get_energy_decomposition
 from frogchem.orca_parser.tddft import parse_tddft_states, get_tddft_soc, parse_tddft_fosc
 from frogchem.orca_parser.population import parse_charges
@@ -84,6 +84,8 @@ class Calculation(BaseParser):
             try:
                 self.number_modes, self.freq = get_freq(self.fl, self.reg)
                 self.normal_modes = get_normal_modes(self.fl, self.reg, N=len(self.freq))
+                # (n_modes, n_atoms, 3): displacement vector of every mode, same numbering as self.freq
+                self.displacements = to_displacements(self.normal_modes, len(self.atoms))
                 self.vib_impulses = get_hessian_graphs_impulses(self.fl, self.reg)
             except Exception as e:
                 raise ParseError(f"Failed to parse frequencies in {self.fname}: {e}") from e

@@ -5,6 +5,12 @@ import re
 logger = logging.getLogger(__name__)
 
 def get_freq(fl, reg):
+    """Mode numbers and frequencies (cm-1) of the last VIBRATIONAL FREQUENCIES block.
+
+    Translations/rotations are included as zero frequencies, imaginary modes are negative.
+
+    NOTE: copied verbatim in ensemble_analyzer/parsers/vibrations.py (orca_get_freq).
+    """
     f_ = re.findall(reg['frequency'], fl)[-1]
     match = np.array(re.findall(r'(\d+):\s+(-?[\d.]+)\s+cm\*\*-1*', f_), dtype=np.float64)
     numbers_mode, freq = match[:, 0].astype(int), match[:, 1]
@@ -12,16 +18,29 @@ def get_freq(fl, reg):
 
 
 def get_normal_modes(fl, reg, N):
+    """Cartesian displacement vectors of the NORMAL MODES block.
+
+    Returns an (N, n_modes) matrix: N = 3 * n_atoms rows (x0, y0, z0, x1, ...), one column per
+    mode as numbered by ORCA (translations/rotations included, so n_modes = N for a full Hessian).
+    The number of columns is read from the block headers.
+
+    NOTE: copied verbatim in ensemble_analyzer/parsers/vibrations.py (orca_get_normal_modes).
+    Keep the two copies in sync.
+    """
     matches = re.findall(reg['normal_modes'], fl, re.DOTALL)
     if not matches:
         raise ValueError("Pattern 'normal_modes' non trovato nel file")
 
     target_text = matches[-1].split('\n\n')[-1]
-    matrix = np.zeros((N, N))
     header_pattern = r'^\s*(\d+(?:\s+\d+)*)\s*$'
     data_pattern = r'^\s*(\d+)\s+((?:[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?\s*)+)'
 
     lines = target_text.strip().split('\n')
+    n_cols = max(
+        (int(line.split()[-1]) + 1 for line in lines if re.match(header_pattern, line.strip())),
+        default=N,
+    )
+    matrix = np.zeros((N, n_cols))
     current_columns = []
 
     for line in lines:
@@ -43,13 +62,22 @@ def get_normal_modes(fl, reg, N):
                 coefficients = [float(c) for c in coefficients]
 
                 for i, coeff in enumerate(coefficients):
-                    if i < len(current_columns) and row_idx < N and current_columns[i] < N:
+                    if i < len(current_columns) and row_idx < N and current_columns[i] < n_cols:
                         matrix[row_idx, current_columns[i]] = coeff
             except (ValueError, IndexError) as e:
                 logger.warning("Errore processando riga dati '%s': %s", line, e)
                 continue
 
     return matrix
+
+
+def to_displacements(normal_modes, n_atoms):
+    """(3N, n_modes) normal-mode matrix -> (n_modes, n_atoms, 3) displacement vectors.
+
+    NOTE: copied verbatim in ensemble_analyzer/parsers/vibrations.py.
+    """
+    normal_modes = np.asarray(normal_modes, dtype=np.float64)
+    return np.ascontiguousarray(normal_modes[:3 * n_atoms].T).reshape(-1, n_atoms, 3)
 
 
 def get_hessian_graphs_impulses(fl, reg):
