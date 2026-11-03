@@ -7,8 +7,8 @@ from frogchem.exceptions import ParseError
 def load_calculation(path):
     """Load a computation output file.
 
-    Returns an ORCA Calculation, Gaussian GaussianCalculation, or a
-    simple namespace with (atoms, geom) for XYZ files.
+    Returns an ORCA Calculation, Gaussian GaussianCalculation, a cleave orbital file
+    (CleaveOrbitals, .json/.json.gz) or a simple namespace with (atoms, geom) for XYZ files.
 
     Raises ParseError if the file cannot be parsed by any supported parser.
     """
@@ -18,6 +18,10 @@ def load_calculation(path):
         from types import SimpleNamespace
         atoms_list, coords_list, _ = read_xyz(path)
         return SimpleNamespace(atoms=atoms_list[0], geom=coords_list[0])
+
+    if path_lower.endswith(('.json', '.json.gz')):
+        from frogchem.cleave_orbitals import CleaveOrbitals
+        return CleaveOrbitals(path)
 
     # .out, .log → use frogchem.read format detection and validate
     try:

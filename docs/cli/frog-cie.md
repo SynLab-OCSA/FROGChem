@@ -36,7 +36,7 @@ package `colour-science` (`pip install colour-science`).
 
 | Argument | Default | Description |
 |---|---|---|
-| `inputs` … | required | CSV spectrum files (glob patterns allowed) |
+| `inputs` … | required | CSV spectrum files (glob patterns allowed); may be omitted when --external-coordinates is given |
 
 **Options**
 
@@ -45,7 +45,7 @@ package `colour-science` (`pip install colour-science`).
 | `--wl` `WL` | `wavelength` | Name of the wavelength column (nm) |
 | `--int` `INT` | `intensity` | Name of the intensity column |
 | `--spectrum-type` `{emission,absorption,transmittance}` | `emission` | How to read the intensity column: 'emission' = emitted spectral power (integrated without illuminant), 'absorption' = absorbance A, converted to T = 10^-A and viewed under D65, 'transmittance' = T (or reflectance) in 0-1, viewed under D65 (default: emission) |
-| `--external-coordinates` `CSV` |  | CSV file with extra points to mark (columns Name, CIEx, CIEy) |
+| `--external-coordinates` `CSV` |  | CSV file with extra points to mark (columns Name, CIEx, CIEy; optional Marker, Color, Size per point) |
 
 **Plot options**
 
@@ -79,13 +79,17 @@ Shared by every command: `-v/--verbose`, `-q/--quiet`, `--format {table,json,csv
 
 | Kind | Name | When | Description |
 |---|---|---|---|
-| Terminal | `CIE coordinates` | always | One row per spectrum: CIE 1931 x and y chromaticity coordinates |
-| Plot | `cie_diagram.png` | always | CIE 1931 chromaticity diagram with one point per spectrum (path from -o/--output) |
+| Terminal | `CIE coordinates` | always | One row per spectrum and per external point: name, source (spectrum/external), CIE 1931 x and y chromaticity coordinates |
+| Plot | `cie_diagram.png` | always | CIE 1931 chromaticity diagram with one labelled point per spectrum and per external point (path from -o/--output) |
 
 ### How to read it
 
-A table with one row per spectrum: **CIE x** and **CIE y** (0–1, 4 decimals), and the diagram with
-one dot per spectrum drawn in its own sRGB colour (reference points as crosses).
+A table with one row per spectrum and per external point (**Source** `spectrum` or `external`):
+**CIE x** and **CIE y** (0–1, 4 decimals), and the diagram with one dot per spectrum drawn in its own
+sRGB colour and external points as crosses (or their `Marker`), each labelled with its name. Labels
+are moved apart so they never overlap; a thin line joins a label to its point when it had to be moved
+away. Highlighted points (with `Marker`/`Color`/`Size`) are labelled first, closest to their marker.
+With `--show`, labels are placed again at every zoom.
 
 * Emission (`emission`): the spectrum is integrated directly with the 2° standard observer, so only
   its **shape** matters. A narrow band gives a point close to the curved edge (pure, saturated colour);
@@ -106,6 +110,8 @@ emission at 620 nm, 2 nm step → x 0.6706, y 0.3292 (red); absorbance 1.0 at 45
 1. Emission: `frog-cie em1.csv em2.csv` (wildcards like `spectra/*.csv` are accepted) → table of x, y and `cie_diagram.png` in the current folder.
 2. Colour of an absorbing solution or film: `frog-cie uv.csv --spectrum-type absorption` (or `transmittance` if the column is T).
 3. Add literature or target points with `--external-coordinates ref.csv` (columns `Name`, `CIEx`, `CIEy`); change the plot name/format with `-o colours.pdf`, open it with `--show`.
+4. Coordinates already computed elsewhere (e.g. a device from another software), without any spectrum: `frog-cie --external-coordinates devices.csv` — the `Name` column is the label.
+5. Highlight a point (e.g. your compound among literature values): give it the optional columns `Marker` (matplotlib marker, e.g. `*`), `Color` and `Size` (marker area, default 30 for `x`) and leave them empty for the others. Zoom on the crowded region with `--xlim 0.13 0.19 --ylim 0 0.06`.
 
 ## Real example
 
@@ -125,7 +131,7 @@ usage: frog-cie [-h] [-v] [-q] [--format {table,json,csv}] [--table-file PATH] [
                 [--xlim MIN MAX] [--ylim MIN MAX] [--colors COLOR [COLOR ...]] [--linewidth W]
                 [--linestyle {solid,dashed,dotted,dashdot}] [--legend | --no-legend]
                 [--grid | --no-grid] [--figsize W H] [--font-size PT]
-                inputs [inputs ...]
+                [inputs ...]
 
 Place emission/absorption spectra on the CIE 1931 chromaticity diagram.
 
@@ -137,7 +143,8 @@ absorbance to T = 10^-A and 'transmittance' uses T as given, both viewed under t
 1 nm. Requires `pip install colour-science`.
 
 positional arguments:
-  inputs                        CSV spectrum files (glob patterns allowed)
+  inputs                        CSV spectrum files (glob patterns allowed); may be omitted when
+                                --external-coordinates is given
 
 options:
   -h, --help                    show this help message and exit
@@ -148,7 +155,8 @@ options:
                                 power (integrated without illuminant), 'absorption' = absorbance
                                 A, converted to T = 10^-A and viewed under D65, 'transmittance' =
                                 T (or reflectance) in 0-1, viewed under D65 (default: emission)
-  --external-coordinates CSV    CSV file with extra points to mark (columns Name, CIEx, CIEy)
+  --external-coordinates CSV    CSV file with extra points to mark (columns Name, CIEx, CIEy;
+                                optional Marker, Color, Size per point)
 
 plot options:
   --fig-format {png,svg,pdf,eps}
@@ -180,10 +188,11 @@ output:
 
 outputs:
   terminal (stdout; --format table|json|csv, --table-file PATH):
-    CIE coordinates             One row per spectrum: CIE 1931 x and y chromaticity coordinates
+    CIE coordinates             One row per spectrum and per external point: name, source
+                                (spectrum/external), CIE 1931 x and y chromaticity coordinates
   plots (saved, not shown; --fig-format, --dpi, --show):
-    cie_diagram.png             CIE 1931 chromaticity diagram with one point per spectrum (path
-                                from -o/--output)
+    cie_diagram.png             CIE 1931 chromaticity diagram with one labelled point per spectrum
+                                and per external point (path from -o/--output)
 
 examples:
   frog-cie spectra/*.csv
@@ -194,6 +203,9 @@ examples:
       Perceived colour of an absorbing sample (T = 10^-A under D65)
   frog-cie *.csv --external-coordinates literature.csv --show
       Also mark reference points (columns Name, CIEx, CIEy) and open the plot window
+  frog-cie --external-coordinates devices.csv
+      Only plot coordinates computed elsewhere, labelled by the Name column (no spectrum
+      needed)
 
 Data go to stdout, messages to stderr. Atom indices are 0-based unless stated otherwise.
 Step-by-step guide (what it is for, what you need, what to expect): docs/cli/frog-cie.md.

@@ -50,6 +50,7 @@ Open-shell (UKS/UHF) outputs have separate α and β orbitals (`--beta`). MO num
 | `--orbital-type` `TYPE …` |  | Restrict to these orbital types: s, p, d, f (the heatmap also accepts px, dxy, ...) |
 | `-b`, `--buffer` `BUFFER` |  | Number of MOs shown on each side of the HOMO (all MOs if omitted) |
 | `--beta` |  | Use beta orbitals (open-shell calculations) |
+| `--set` `NAME` |  | Orbital set of a cleave orbital file (.orbitals.json; default: the file's own) |
 
 **Plot options**
 
@@ -126,7 +127,7 @@ Every option, as printed by `frog-mo --help`:
 ```text
 usage: frog-mo [-h] [-v] [-q] [--format {table,json,csv}] [--table-file PATH]
                [-i INDICES [INDICES ...]] [--elements EL [EL ...]]
-               [--orbital-type TYPE [TYPE ...]] [-b BUFFER] [--beta] [--out-dir DIR]
+               [--orbital-type TYPE [TYPE ...]] [-b BUFFER] [--beta] [--set NAME] [--out-dir DIR]
                [--plot [PATH]] [--fig-format {png,svg,pdf,eps}] [--dpi DPI] [--show]
                [--title TEXT] [--xlabel TEXT] [--ylabel TEXT] [--xlim MIN MAX] [--ylim MIN MAX]
                [--colors COLOR [COLOR ...]] [--linewidth W]
@@ -145,14 +146,16 @@ positional arguments:
 
 options:
   -h, --help                    show this help message and exit
-  -i INDICES [INDICES ...], --indices INDICES [INDICES ...]
+  -i, --indices INDICES [INDICES ...]
                                 Atom indices to show (0-based)
   --elements EL [EL ...]        Show all atoms of these elements, e.g. 'C' 'Fe'
   --orbital-type TYPE [TYPE ...]
                                 Restrict to these orbital types: s, p, d, f (the heatmap also
                                 accepts px, dxy, ...)
-  -b BUFFER, --buffer BUFFER    Number of MOs shown on each side of the HOMO (all MOs if omitted)
+  -b, --buffer BUFFER           Number of MOs shown on each side of the HOMO (all MOs if omitted)
   --beta                        Use beta orbitals (open-shell calculations)
+  --set NAME                    Orbital set of a cleave orbital file (.orbitals.json; default: the
+                                file's own)
 
 plot options:
   --plot [PATH]                 Save the plot; PATH is optional (default: <stem>_mo.png)

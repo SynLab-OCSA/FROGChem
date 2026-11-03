@@ -25,8 +25,8 @@ from frogchem.printer import print_saved
 __all__ = [
     "DEFAULT_DPI", "DEFAULT_FIGSIZE", "FIG_FORMATS", "LINESTYLES", "STYLE",
     "PlotOptions", "rc_params", "style", "new_figure", "finish", "series_colors", "get_cmap",
-    "energy_label", "line", "scatter", "bar", "hist", "heatmap", "contour", "colorbar",
-    "save_figure", "resolve_path", "show_figures", "close",
+    "energy_label", "line", "scatter", "label_points", "bar", "hist", "heatmap", "contour", "colorbar",
+    "tight_layout", "save_figure", "resolve_path", "show_figures", "close",
 ]
 
 DEFAULT_DPI = 300
@@ -331,6 +331,83 @@ def scatter(x, y, labels=None, annotate: Optional[Sequence[str]] = None, size=No
     return fig, ax
 
 
+# label offsets tried by label_points: directions in order of preference, distances in points
+_LABEL_DIRECTIONS = ((1, 1), (1, -1), (-1, 1), (-1, -1), (1, 0), (-1, 0), (0, 1), (0, -1))
+_LABEL_RADII = (6, 14, 24, 36, 50, 66, 84, 104)
+
+
+def _overlap(a, b) -> float:
+    """Overlap area of two (x0, y0, x1, y1) boxes."""
+    return max(0.0, min(a[2], b[2]) - max(a[0], b[0])) * max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
+
+
+def label_points(ax, x, y, texts: Sequence[str], fontsize="medium", marker_size=4.0):
+    """Write `texts` next to the points (x, y) without labels overlapping each other or the markers.
+
+    Each label goes to the nearest free spot around its point (8 directions, growing distance),
+    in the given order (earlier points get the closest spots); a thin leader line joins a label
+    moved away from its point. Placement is redone whenever the view changes, so labels stay apart
+    while zooming in the --show window. Returns the annotations.
+    marker_size: half-size (points) of the area kept free around each point (one value or one per point).
+    """
+    from matplotlib.text import Text
+
+    xy = np.column_stack([np.atleast_1d(x), np.atleast_1d(y)]).astype(float)
+    half = np.broadcast_to(np.asarray(marker_size, dtype=float), len(xy))
+    anns = [ax.annotate(text, tuple(p), xytext=(0, 0), textcoords="offset points", fontsize=fontsize,
+                        weight="bold", zorder=11,
+                        bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.85,
+                                  edgecolor="0.3", linewidth=0.5),
+                        arrowprops=dict(arrowstyle="-", color="0.15", linewidth=0.7, shrinkA=0, shrinkB=2))
+            for text, p in zip(texts, xy)]
+
+    def place(*_):
+        fig = ax.figure
+        renderer = fig.canvas.get_renderer()
+        ax.apply_aspect()                                    # fixed aspect moves the axes only at draw time
+        pt = fig.dpi / 72                                    # pixels per point
+        frame = ax.get_window_extent(renderer).extents
+        pix = ax.transData.transform(xy)
+        taken = [(px - r * pt, py - r * pt, px + r * pt, py + r * pt) for (px, py), r in zip(pix, half)]
+        pad = 2 * pt
+        for ann, (px, py), r in zip(anns, pix, half):
+            if not (frame[0] <= px <= frame[2] and frame[1] <= py <= frame[3]):
+                continue                                     # point out of view: clipped anyway
+            ext = Text.get_window_extent(ann, renderer)      # text only: Annotation's adds the arrow
+            w, h = ext.width + 2 * pad, ext.height + 2 * pad
+            best = None
+            for dist in _LABEL_RADII:
+                dist = max(dist, r + 2)
+                d = dist * pt
+                for dx, dy in _LABEL_DIRECTIONS:
+                    x0 = px + d if dx > 0 else px - d - w if dx < 0 else px - w / 2
+                    y0 = py + d if dy > 0 else py - d - h if dy < 0 else py - h / 2
+                    box = (x0, y0, x0 + w, y0 + h)
+                    outside = w * h - _overlap(box, frame)
+                    if outside < 0.5:                        # < half a pixel²: rounding, i.e. inside
+                        outside = 0.0
+                    score = sum(_overlap(box, t) for t in taken) + outside
+                    if best is None or score < best[0]:
+                        best = (score, dist, dx, dy, box)
+                    if score == 0:
+                        break
+                if best[0] == 0:
+                    break
+            _, dist, dx, dy, box = best
+            ann.set_ha("left" if dx > 0 else "right" if dx < 0 else "center")
+            ann.set_va("bottom" if dy > 0 else "top" if dy < 0 else "center")
+            ann.xyann = (dx * (dist + 2), dy * (dist + 2))
+            ann.arrow_patch.set_visible(dist > max(_LABEL_RADII[0], r + 2))
+            taken.append((box[0] - pt, box[1] - pt, box[2] + pt, box[3] + pt))   # 1 pt gap between labels
+
+    place()
+    ax.callbacks.connect("xlim_changed", place)
+    ax.callbacks.connect("ylim_changed", place)
+    ax.figure.canvas.mpl_connect("resize_event", place)
+    _after_layout(ax.figure, place)                          # tight layout in save_figure moves the axes
+    return anns
+
+
 def bar(categories, values, labels=None, horizontal: bool = False, width: float = 0.8, ax=None,
         opts: Optional[PlotOptions] = None, **kwargs):
     """Bar chart; several series ({label: values} or a sequence) are grouped side by side.
@@ -471,17 +548,43 @@ def resolve_path(
     return base.with_name(base.name + ext)
 
 
+def _after_layout(fig, callback) -> None:
+    """Run `callback()` after save_figure() has laid out `fig` (e.g. to re-place labels)."""
+    fig._frog_after_layout = [*getattr(fig, "_frog_after_layout", ()), callback]
+
+
+def tight_layout(fig) -> None:
+    """Matplotlib's tight layout (titles, labels and an outside legend fit in the figure), then the
+    callbacks registered with _after_layout. Figures with their own layout engine (layout='constrained')
+    are left alone."""
+    import warnings
+
+    from matplotlib.layout_engine import PlaceHolderLayoutEngine
+    engine = fig.get_layout_engine()
+    if engine is not None and not isinstance(engine, PlaceHolderLayoutEngine):
+        return
+    with warnings.catch_warnings():
+        # axes tight layout cannot handle are left as they are
+        warnings.filterwarnings("ignore", message=".*[Tt]ight.?layout not applied")
+        fig.tight_layout()
+    for callback in getattr(fig, "_frog_after_layout", ()):
+        callback()
+
+
 def save_figure(fig, path: Union[str, Path], dpi: int = DEFAULT_DPI, show: bool = False,
-                kind: str = "plot", defer_show: bool = False, **savefig_kwargs) -> Path:
+                kind: str = "plot", defer_show: bool = False, layout: bool = True, **savefig_kwargs) -> Path:
     """Save `fig` to `path`, report it on stderr, then show (if requested) or close it.
 
-    With defer_show=True the figure stays open and the caller calls show_figures() once
-    (CLICommand does this after run(), so --show opens all figures together).
+    layout=True (default) applies tight_layout(fig) first, so the saved and shown figure use the
+    same layout. With defer_show=True the figure stays open and the caller calls show_figures()
+    once (CLICommand does this after run(), so --show opens all figures together).
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     savefig_kwargs.setdefault("bbox_inches", "tight")
     with style():
+        if layout:
+            tight_layout(fig)
         fig.savefig(path, dpi=dpi, **savefig_kwargs)
     print_saved(path, kind)
     if not show:

@@ -7,6 +7,7 @@ import periodictable as pt
 
 from frogchem.orca_parser.orb_type import ORB_POLINOMIAL, CARTESIAN_CODES, CARTESIAN_EXPONENTS
 from frogchem.io import write_gaussian_cube
+from frogchem.cleave_orbitals import is_open_shell
 import logging
 from frogchem.printer import print_info, print_warning
 
@@ -77,6 +78,11 @@ _ANG_PER_LETTER = {
 def build_basis_table(calc, geom=None) -> List[Dict[str, Any]]:
     if geom is None:
         geom = calc.geom * _AU
+    # ponytail: cleave orbital files carry an exact per-atom table (frogchem.cleave_orbitals);
+    # the shell matching below is only needed for the ORCA/Gaussian printouts
+    table = getattr(calc, 'basis_table', None)
+    if table is not None:
+        return [dict(b, center=geom[b['atom_idx']]) for b in table]
     n_bf = len(calc.mask_atoms)
     basis_table = []
 
@@ -165,23 +171,26 @@ def _cartesian_norm(a: int, b: int, c: int) -> float:
     return (2.0 / np.pi) ** 0.75 * 2.0 ** (a + b + c) / np.sqrt(dfact[a] * dfact[b] * dfact[c])
 
 
+# ponytail: exact constants (N0 = (2/π)^(3/4)); the former 6-digit values (0.712705, ...) left a
+# 5e-7 relative error on every orbital, visible against PySCF in the cleave round-trip test
+_N0 = (2.0 / np.pi) ** 0.75
 _NORM_CONST = {
-    0:  0.712705,   # s
-    1:  1.425411,   # px
-    2:  1.425411,   # py
-    3:  1.425411,   # pz
-    4:  0.822961,   # dz2
-    5:  2.850822,   # dxz
-    6:  2.850822,   # dyz
-    7:  1.425411,   # dx2y2
-    8:  2.850822,   # dxy
-    9:  0.736079,   # f0
-    10: 0.901509,   # f+1
-    11: 0.901509,   # f-1
-    12: 2.850822,   # f+2
-    13: 5.701644,   # f-2
-    14: 1.163843,   # f+3
-    15: 1.163843,   # f-3
+    0:  _N0,                        # s
+    1:  2.0 * _N0,                  # px
+    2:  2.0 * _N0,                  # py
+    3:  2.0 * _N0,                  # pz
+    4:  2.0 * _N0 / np.sqrt(3.0),   # dz2
+    5:  4.0 * _N0,                  # dxz
+    6:  4.0 * _N0,                  # dyz
+    7:  2.0 * _N0,                  # dx2y2
+    8:  4.0 * _N0,                  # dxy
+    9:  8.0 * _N0 / np.sqrt(60.0),  # f0
+    10: 8.0 * _N0 / np.sqrt(40.0),  # f+1
+    11: 8.0 * _N0 / np.sqrt(40.0),  # f-1
+    12: 4.0 * _N0,                  # f+2
+    13: 8.0 * _N0,                  # f-2
+    14: 8.0 * _N0 / np.sqrt(24.0),  # f+3
+    15: 8.0 * _N0 / np.sqrt(24.0),  # f-3
 }
 _NORM_CONST.update({code: _cartesian_norm(*abc) for code, abc in _CART_EXP.items()})
 
@@ -215,11 +224,17 @@ def eval_all_basis(basis_table: List[Dict[str, Any]], points: np.ndarray) -> np.
     return bf
 
 
+def _density_orbitals(calc):
+    """Orbitals whose Σ n|φ|² is the density (cleave ALMO sets are non-orthogonal)."""
+    return calc.density_view() if hasattr(calc, 'density_view') else calc
+
+
 def compute_density_on_points(
     calc,
     points: np.ndarray,
     basis_table: Optional[List[Dict[str, Any]]] = None,
 ) -> np.ndarray:
+    calc = _density_orbitals(calc)
     if basis_table is None:
         basis_table = build_basis_table(calc)
 
@@ -227,7 +242,7 @@ def compute_density_on_points(
     rho = np.zeros(len(points), dtype=np.float64)
 
     # Check if we are dealing with an Open-Shell calculation (Unrestricted)
-    if calc.mult != 1 and hasattr(calc, 'alpha_coeff') and hasattr(calc, 'beta_coeff'):
+    if is_open_shell(calc) and hasattr(calc, 'alpha_coeff') and hasattr(calc, 'beta_coeff'):
         # Sum Alpha density using Alpha dimensions
         for i in range(calc.alpha_coeff.shape[1]):
             if i < len(calc.alpha_occ) and calc.alpha_occ[i] > 1e-12:
@@ -357,9 +372,10 @@ def build_spin_density_cube(
     padding: float = 5.0,
     n_voxels: Optional[int] = None,
 ) -> None:
-    if calc.mult == 1:
+    if not is_open_shell(calc):
         print_warning('Closed-shell (mult=1): spin density is zero everywhere')
         return
+    calc = _density_orbitals(calc)
 
     table, points, axes, (nx, ny, nz) = _grid_and_basis(calc, spacing, padding, n_voxels)
     print_info('evaluating spin density...')
@@ -398,7 +414,7 @@ def build_orbital_cube(
 
     bf = eval_all_basis(table, points)
     
-    if hasattr(calc, 'mult') and calc.mult != 1:
+    if is_open_shell(calc):
         if beta and hasattr(calc, 'beta_coeff'):
             coeff = calc.beta_coeff[:, orbital_index]
             label = 'beta'

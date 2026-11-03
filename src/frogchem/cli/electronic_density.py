@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build electron density, spin density and molecular orbital cube files
-from ORCA/Gaussian output, from the command line or in an interactive session.
+from ORCA/Gaussian output or a cleave orbital file, from the command line or in an interactive session.
 """
 
 import os
@@ -9,6 +9,7 @@ from typing import Any, List, Optional, Tuple
 
 import numpy as np
 
+from frogchem.cleave_orbitals import is_open_shell
 from frogchem.cli.base import CLICommand, Guide, Output
 from frogchem.density_builder import build_density_cube, build_orbital_cube, build_spin_density_cube
 from frogchem.exceptions import InputError
@@ -20,7 +21,7 @@ def choose_file() -> str:
     from InquirerPy import inquirer
     from InquirerPy.validator import PathValidator
     return inquirer.filepath(
-        message="ORCA/Gaussian output file:",
+        message="ORCA/Gaussian output or cleave orbital file:",
         default=os.getcwd(),
         validate=PathValidator(is_file=True, message="Not a valid file"),
         only_files=True,
@@ -29,7 +30,7 @@ def choose_file() -> str:
 
 def get_frontier_orbitals(calc, beta=False) -> Tuple[Optional[int], Optional[int]]:
     """Return (homo_idx, lumo_idx) based on MO occupations, or (None, None)."""
-    if hasattr(calc, 'mult') and calc.mult != 1 and hasattr(calc, 'alpha_occ'):
+    if is_open_shell(calc) and hasattr(calc, 'alpha_occ'):
         occ = calc.beta_occ if beta else calc.alpha_occ
         occ = np.asarray(occ)
     elif getattr(calc, 'homo', None) is not None:
@@ -58,18 +59,22 @@ def _positive_float(text: str, allow_zero: bool = False) -> bool:
 class ElectronicDensity(CLICommand, name='frog-density'):
     """Build electron density, spin density and molecular orbital cube files.
 
-    Reads the basis set and MO coefficients from ORCA output (! PrintBasis PrintMOs) or a Gaussian log
-    (pop=full gfinput). Without a selection the total electron density is computed. Use --interactive for a guided session.
+    Reads the basis set and MO coefficients from ORCA output (! PrintBasis PrintMOs), a Gaussian log
+    (pop=full gfinput) or a cleave orbital file (<name>.orbitals.json, written by every almo/cdft run;
+    pick the orbital set with --set). Without a selection the total electron density is computed.
+    Use --interactive for a guided session.
     """
 
     category = 'spectroscopy'
-    has_tables = False
     outputs = [
         Output('file', '<stem>_density.cube', 'Total electron density (e/bohr³)', when='--density, or no selection'),
         Output('file', '<stem>_spin_density.cube', 'Spin density, alpha - beta (open-shell only)', when='--spin'),
         Output('file', '<stem>_homo.cube', 'HOMO', when='--homo'),
         Output('file', '<stem>_lumo.cube', 'LUMO', when='--lumo'),
         Output('file', '<stem>_orbital_<N>.cube', 'Orbital N (0-based)', when='--orbital'),
+        Output('table', 'Orbital sets (<file>)', 'Name, kind, spin channels, number of orbitals, '
+                                                 'orthonormality and description of each set of a cleave '
+                                                 'orbital file', when='--list-sets'),
     ]
     guide = Guide(
         why="""
@@ -88,6 +93,14 @@ class ElectronicDensity(CLICommand, name='frog-density'):
             * **Gaussian 16**: `#p ... pop=full iop(3/33=1) iop(6/80=1) gfinput` (`gfinput` prints the basis,
               `pop=full` every MO). Pure (`5D 7F`) and Cartesian (`6D 10F`) d/f functions both work, g functions
               do not; no `.chk`, `formchk` or `cubegen` is needed.
+
+            * **cleave** (`almo`, `cdft`): nothing to add, every run writes `<name>.orbitals.json` with the
+              basis and several **orbital sets**: `full` (canonical MOs of the complex, the default),
+              `frag1`, `frag2`, ... (isolated fragments), `frozen` and `polarized` (ALMOs, non-orthogonal:
+              their density is computed exactly), `covp_forward`/`covp_backward` (with `almo --covp`: donor
+              and acceptor orbitals side by side, orbital cubes only), `cdft` and `hs` (CDFT state and its
+              high-spin partner). List them with `--list-sets`, choose one with `--set`; the cube names
+              carry the set (`dimer_polarized_density.cube`).
 
             Without them the command stops with an error telling you so. A spin density needs an open-shell
             calculation (multiplicity 2, 3, ...). Orbital numbers are **0-based**, as in ORCA's
@@ -131,11 +144,14 @@ class ElectronicDensity(CLICommand, name='frog-density'):
         ('frog-density opt.out --homo --lumo --voxels 60 -o frontier',
          'Write frontier_homo.cube and frontier_lumo.cube on a 60x60x60 grid'),
         ('frog-density opt.out --spin --orbital 41 42 --beta', 'Spin density and beta orbitals 41 and 42'),
+        ('frog-density dimer.orbitals.json --list-sets', 'Orbital sets of a cleave run (almo/cdft)'),
+        ('frog-density dimer.orbitals.json --set polarized --density',
+         'Density of the polarized (ALMO) state of a cleave ALMO-EDA'),
     ]
 
     def setup_args(self, parser):
-        parser.add_argument('input', nargs='?', help='ORCA output with ! PrintBasis PrintMOs, or Gaussian log '
-                                                     'with pop=full gfinput')
+        parser.add_argument('input', nargs='?', help='ORCA output with ! PrintBasis PrintMOs, Gaussian log '
+                                                     'with pop=full gfinput, or cleave .orbitals.json')
         parser.add_argument('--density', action='store_true', help='Compute the total electron density')
         parser.add_argument('--spin', action='store_true', help='Compute the spin density')
         parser.add_argument('--orbital', type=int, nargs='+', metavar='N',
@@ -143,6 +159,10 @@ class ElectronicDensity(CLICommand, name='frog-density'):
         parser.add_argument('--homo', action='store_true', help='Compute the HOMO')
         parser.add_argument('--lumo', action='store_true', help='Compute the LUMO')
         parser.add_argument('--beta', action='store_true', help='Use beta orbitals (open-shell systems)')
+        parser.add_argument('--set', metavar='NAME', help='Orbital set of a cleave orbital file '
+                                                          '(default: the file\'s own, e.g. full or cdft)')
+        parser.add_argument('--list-sets', action='store_true',
+                            help='List the orbital sets of a cleave orbital file and exit')
         self.add_grid_args(parser, spacing=0.15, padding=3.0)
         self.add_output_arg(parser, help='Output cube path, or prefix ({prefix}_{tag}.cube) when several '
                                          'cubes are written; without it, cubes go next to the input')
@@ -154,6 +174,7 @@ class ElectronicDensity(CLICommand, name='frog-density'):
             filepath = args.input or choose_file()
             self.require_files([filepath])
             calc = load_calculation(filepath)
+            self._select_set(calc, args, filepath, ask=True)
             self._check_basis(calc, filepath)
             self._interactive_session(calc, filepath, args)
             return
@@ -162,8 +183,41 @@ class ElectronicDensity(CLICommand, name='frog-density'):
             raise InputError('No input file given (or use --interactive)')
         self.require_files([args.input])
         calc = load_calculation(args.input)
+        if self._select_set(calc, args, args.input):
+            return
         self._check_basis(calc, args.input)
         self._run_cli(calc, args)
+
+    def _select_set(self, calc, args, path, ask=False) -> bool:
+        """--set / --list-sets of a cleave orbital file; True when only the list was asked."""
+        if not hasattr(calc, 'select'):
+            if args.set or args.list_sets:
+                raise InputError(f'--set/--list-sets need a cleave orbital file, not {path}')
+            return False
+        if args.list_sets:
+            self.output(calc.sets(), ['Set', 'Kind', 'Spin', 'MOs', 'Orthonormal', 'Description'],
+                        title=f'Orbital sets ({path})')
+            return True
+        if args.set:
+            calc.select(args.set)
+        elif ask and len(calc.set_names) > 1:
+            from InquirerPy import inquirer
+            calc.select(inquirer.select(message='Orbital set:', choices=calc.set_names,
+                                        default=calc.set_name).execute())
+        print_info(f'Orbital set: {calc.set_name} ({calc.set_info["description"]})')
+        return False
+
+    @staticmethod
+    def _source(path):
+        """Path that names the cubes: 'dimer.orbitals.json' → 'dimer.json' (cubes 'dimer_<tag>.cube')."""
+        path = Path(path)
+        stem = path.name.split('.orbitals.json')[0]
+        return path.with_name(stem + '.json') if stem != path.name else path
+
+    @staticmethod
+    def _tag(calc, tag):
+        """Cube name tag; cleave files prefix the orbital set (polarized_density, ...)."""
+        return f'{calc.set_name}_{tag}' if hasattr(calc, 'set_name') else tag
 
     @staticmethod
     def _check_basis(calc, path):
@@ -176,7 +230,9 @@ class ElectronicDensity(CLICommand, name='frog-density'):
         """Run a cube builder (its chatter goes to stderr) and report the file."""
         a = self.args
         grid = dict(spacing=a.spacing, padding=a.padding, n_voxels=a.voxels)
-        if op_type == 'spin' and getattr(calc, 'mult', 1) == 1:
+        if op_type != 'orbital' and hasattr(calc, 'density_view'):
+            calc.density_view()               # sets without occupations stop here, before the grid
+        if op_type == 'spin' and not is_open_shell(calc):
             print_warning('Closed-shell calculation (multiplicity 1): spin density is zero, cube not written')
             return
         if op_type == 'density':
@@ -192,7 +248,7 @@ class ElectronicDensity(CLICommand, name='frog-density'):
 
     @staticmethod
     def _n_mos(calc, beta=False):
-        if getattr(calc, 'mult', 1) != 1:
+        if is_open_shell(calc):
             coeff = getattr(calc, 'beta_coeff' if beta else 'alpha_coeff', None)
             if coeff is not None:
                 return coeff.shape[1]
@@ -223,10 +279,11 @@ class ElectronicDensity(CLICommand, name='frog-density'):
 
         single = len(operations) == 1
         for op_type, val, tag in operations:
+            tag = self._tag(calc, tag)
             if args.output:
                 out_path = self.output_path(args.output, 'cube', None if single else tag)
             else:
-                out_path = self.derived_path(args.input, tag, '.cube')
+                out_path = self.derived_path(self._source(args.input), tag, '.cube')
             self._build(op_type, calc, out_path, val, beta=args.beta)
 
     def _interactive_session(self, calc, filepath, args):
@@ -237,7 +294,7 @@ class ElectronicDensity(CLICommand, name='frog-density'):
         use_voxels = args.voxels is not None
 
         def default_path(tag):
-            return str(self.derived_path(filepath, tag, '.cube'))
+            return str(self.derived_path(self._source(filepath), self._tag(calc, tag), '.cube'))
 
         while True:
             mode = inquirer.select(
