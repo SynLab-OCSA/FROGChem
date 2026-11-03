@@ -201,6 +201,64 @@ def test_save_figure_writes_reports_and_closes(tmp_path, capsys, monkeypatch):
     assert not plt.fignum_exists(fig.number)
 
 
+def _label_boxes(fig, anns):
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    return [a.get_bbox_patch().get_window_extent(renderer).extents for a in anns]
+
+
+def test_label_points_no_overlap_and_close():
+    # a crowded cluster with duplicated points, on a fixed-aspect axes (aspect is applied at draw time)
+    rng = np.random.default_rng(0)
+    x = np.r_[rng.uniform(0.45, 0.55, 20), [0.5] * 4, 0.05]
+    y = np.r_[rng.uniform(0.45, 0.55, 20), [0.5] * 4, 0.95]
+    fig, ax = plotter.new_figure(figsize=(8, 8))
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect("equal")
+    anns = plotter.label_points(ax, x, y, [f"label {i}" for i in range(len(x))])
+    boxes = _label_boxes(fig, anns)
+    assert not any(plotter._overlap(boxes[i], boxes[j]) > 0 for i in range(len(boxes)) for j in range(i))
+    # isolated point: label at the closest distance, no leader line
+    assert np.abs(anns[-1].xyann).max() == 8 and not anns[-1].arrow_patch.get_visible()
+    # zooming re-places the labels: still no overlap
+    ax.set_xlim(0.4, 0.6)
+    ax.set_ylim(0.4, 0.6)
+    boxes = [b for a, b in zip(anns, _label_boxes(fig, anns)) if a.get_visible() and 0.4 <= a.xy[0] <= 0.6]
+    assert not any(plotter._overlap(boxes[i], boxes[j]) > 0 for i in range(len(boxes)) for j in range(i))
+
+
+def test_save_figure_tight_layout(tmp_path):
+    fig, ax = plotter.line([0, 1], [0, 1], opts=PlotOptions(ylabel="a\nvery\ntall\nlabel"))
+    ax.legend(["curve"], loc="upper left", bbox_to_anchor=(1.02, 1))     # outside the axes
+    before = ax.get_position().bounds
+    plotter.save_figure(fig, tmp_path / "plot.png", show=True, defer_show=True)
+    assert ax.get_position().bounds != before                              # tight layout moved the axes
+    # an own layout engine is kept, layout=False leaves the axes where they are
+    fig2, ax2 = plotter.new_figure(layout="constrained")
+    plotter.save_figure(fig2, tmp_path / "c.png", show=True, defer_show=True)
+    assert type(fig2.get_layout_engine()).__name__ == "ConstrainedLayoutEngine"
+    fig3, ax3 = plotter.line([0, 1], [0, 1], opts=PlotOptions(ylabel="a\nvery\ntall\nlabel"))
+    before = ax3.get_position().bounds
+    plotter.save_figure(fig3, tmp_path / "n.png", show=True, defer_show=True, layout=False)
+    assert ax3.get_position().bounds == before
+
+
+def test_label_points_replaced_after_layout(tmp_path):
+    x = np.r_[np.linspace(0.45, 0.55, 15), [0.5] * 3]
+    fig, ax = plotter.new_figure(figsize=(6, 6))
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect("equal")
+    ax.set_ylabel("a\nvery\ntall\nlabel")
+    ax.plot([0], [0], label="curve")
+    ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
+    anns = plotter.label_points(ax, x, x[::-1], [f"label {i}" for i in range(len(x))])
+    plotter.save_figure(fig, tmp_path / "plot.png", show=True, defer_show=True)
+    boxes = _label_boxes(fig, anns)
+    assert not any(plotter._overlap(boxes[i], boxes[j]) > 0 for i in range(len(boxes)) for j in range(i))
+
+
 def test_save_figure_deferred_show_keeps_figure_open(tmp_path):
     fig, _ = plotter.line([0, 1], [0, 1])
     plotter.save_figure(fig, tmp_path / "plot.png", show=True, defer_show=True)

@@ -37,9 +37,10 @@ class CiePlot(CLICommand, name='frog-cie'):
     """
     category = 'spectroscopy'
     outputs = [
-        Output('table', 'CIE coordinates', 'One row per spectrum: CIE 1931 x and y chromaticity coordinates'),
-        Output('plot', 'cie_diagram.png', 'CIE 1931 chromaticity diagram with one point per spectrum '
-                                          '(path from -o/--output)'),
+        Output('table', 'CIE coordinates', 'One row per spectrum and per external point: name, source '
+                                           '(spectrum/external), CIE 1931 x and y chromaticity coordinates'),
+        Output('plot', 'cie_diagram.png', 'CIE 1931 chromaticity diagram with one labelled point per spectrum '
+                                          'and per external point (path from -o/--output)'),
     ]
     guide = Guide(
         why="""
@@ -67,10 +68,19 @@ class CiePlot(CLICommand, name='frog-cie'):
             "(or `transmittance` if the column is T).",
             "Add literature or target points with `--external-coordinates ref.csv` (columns `Name`, `CIEx`, "
             "`CIEy`); change the plot name/format with `-o colours.pdf`, open it with `--show`.",
+            "Coordinates already computed elsewhere (e.g. a device from another software), without any "
+            "spectrum: `frog-cie --external-coordinates devices.csv` — the `Name` column is the label.",
+            "Highlight a point (e.g. your compound among literature values): give it the optional columns "
+            "`Marker` (matplotlib marker, e.g. `*`), `Color` and `Size` (marker area, default 30 for `x`) and "
+            "leave them empty for the others. Zoom on the crowded region with `--xlim 0.13 0.19 --ylim 0 0.06`.",
         ],
         expect="""
-            A table with one row per spectrum: **CIE x** and **CIE y** (0–1, 4 decimals), and the diagram with
-            one dot per spectrum drawn in its own sRGB colour (reference points as crosses).
+            A table with one row per spectrum and per external point (**Source** `spectrum` or `external`):
+            **CIE x** and **CIE y** (0–1, 4 decimals), and the diagram with one dot per spectrum drawn in its own
+            sRGB colour and external points as crosses (or their `Marker`), each labelled with its name. Labels
+            are moved apart so they never overlap; a thin line joins a label to its point when it had to be moved
+            away. Highlighted points (with `Marker`/`Color`/`Size`) are labelled first, closest to their marker.
+            With `--show`, labels are placed again at every zoom.
 
             * Emission (`emission`): the spectrum is integrated directly with the 2° standard observer, so only
               its **shape** matters. A narrow band gives a point close to the curved edge (pure, saturated colour);
@@ -95,10 +105,13 @@ class CiePlot(CLICommand, name='frog-cie'):
          'Perceived colour of an absorbing sample (T = 10^-A under D65)'),
         ('frog-cie *.csv --external-coordinates literature.csv --show',
          'Also mark reference points (columns Name, CIEx, CIEy) and open the plot window'),
+        ('frog-cie --external-coordinates devices.csv',
+         'Only plot coordinates computed elsewhere, labelled by the Name column (no spectrum needed)'),
     ]
 
     def setup_args(self, parser):
-        parser.add_argument('inputs', nargs='+', help='CSV spectrum files (glob patterns allowed)')
+        parser.add_argument('inputs', nargs='*', help='CSV spectrum files (glob patterns allowed); may be '
+                                                      'omitted when --external-coordinates is given')
         parser.add_argument('--wl', default='wavelength', help='Name of the wavelength column (nm)')
         parser.add_argument('--int', default='intensity', help='Name of the intensity column')
         parser.add_argument('--spectrum-type', choices=['emission', 'absorption', 'transmittance'],
@@ -108,7 +121,8 @@ class CiePlot(CLICommand, name='frog-cie'):
                                  "T = 10^-A and viewed under D65, 'transmittance' = T (or reflectance) in 0-1, "
                                  "viewed under D65 (default: emission)")
         parser.add_argument('--external-coordinates', metavar='CSV',
-                            help='CSV file with extra points to mark (columns Name, CIEx, CIEy)')
+                            help='CSV file with extra points to mark (columns Name, CIEx, CIEy; optional '
+                                 'Marker, Color, Size per point)')
         self.add_output_arg(parser, help='Plot path (extension overrides --fig-format)')
         self.add_plot_args(parser, optional=False)
 
@@ -121,6 +135,8 @@ class CiePlot(CLICommand, name='frog-cie'):
             files.extend(matches)
         if args.external_coordinates:
             self.require_files([args.external_coordinates])
+        elif not files:
+            raise InputError("Give at least one spectrum file or --external-coordinates")
 
         try:
             import colour
@@ -130,6 +146,8 @@ class CiePlot(CLICommand, name='frog-cie'):
                              "Install it with: pip install colour-science")
         from dataclasses import replace
         from itertools import cycle
+
+        from matplotlib.markers import MarkerStyle
 
         from frogchem import plotter
 
@@ -142,17 +160,20 @@ class CiePlot(CLICommand, name='frog-cie'):
             title=opts.title,
             show_diagram_colours=True,
             show_spectral_locus=True,
+            transparent_background=False,   # colour's default makes the figure margin transparent
         )
         # Spectra are drawn in their perceived colour; --colors applies to the external points
         point_opts = replace(opts, colors=None, title=None, legend=False)
         ext_colors = cycle(opts.colors) if opts.colors else None
 
-        print_info(f"Processing {len(files)} spectra with colour-science...")
+        if files:
+            print_info(f"Processing {len(files)} spectra with colour-science...")
 
         cmfs = colour.MSDS_CMFS["CIE 1931 2 Degree Standard Observer"]
         illuminant = colour.SDS_ILLUMINANTS["D65"]
 
         rows = []
+        marks = []                      # (x, y, label, marker half-size in points, custom style)
         for fpath in files:
             name = os.path.basename(fpath)
             try:
@@ -183,34 +204,56 @@ class CiePlot(CLICommand, name='frog-cie'):
                 continue
 
             label = name[:-4] if name.lower().endswith('.csv') else name
-            rows.append([label, x, y])
-            plotter.scatter([x], [y], labels=label, annotate=[label], size=80, ax=ax, opts=point_opts,
+            rows.append([label, 'spectrum', x, y])
+            marks.append((x, y, label, np.sqrt(80) / 2, False))
+            plotter.scatter([x], [y], labels=label, size=80, ax=ax, opts=point_opts,
                             color=[RGB], edgecolors='black', zorder=10)
 
-        n_external = 0
         if args.external_coordinates:
             ext = pd.read_csv(args.external_coordinates)
+            ext.columns = ext.columns.str.strip()
+            missing = {'Name', 'CIEx', 'CIEy'} - set(ext.columns)
+            if missing:
+                plotter.close(fig)
+                raise InputError(f"{args.external_coordinates}: missing column(s) {', '.join(sorted(missing))} "
+                                 "(expected Name, CIEx, CIEy)")
             for _, row in ext.iterrows():
+                name = str(row['Name']).strip()
                 try:
                     cx, cy = float(row['CIEx']), float(row['CIEy'])
                 except ValueError:
-                    print_warning(f"Skipping {row['Name']}: invalid coordinates ({row['CIEx']}, {row['CIEy']})")
+                    print_warning(f"Skipping {name}: invalid coordinates ({row['CIEx']}, {row['CIEy']})")
                     continue
-                color = {'color': next(ext_colors)} if ext_colors else {}
-                plotter.scatter([cx], [cy], labels=str(row['Name']), size=30, ax=ax, opts=point_opts,
-                                marker='x', zorder=10, **color)
-                n_external += 1
+                rows.append([name, 'external', cx, cy])
+                style = {k: row[k] for k in ('Marker', 'Color', 'Size') if k in ext.columns and pd.notna(row[k])}
+                marker = str(style.get('Marker', 'x')).strip()
+                kw = {}
+                if 'Color' in style:
+                    kw['color'] = str(style['Color']).strip()
+                elif ext_colors:
+                    kw['color'] = next(ext_colors)
+                if MarkerStyle(marker).is_filled():
+                    kw.update(edgecolors='black', linewidths=0.8)
+                size = float(style['Size']) if 'Size' in style else (30 if marker == 'x' else 80)
+                marks.append((cx, cy, name, np.sqrt(size) / 2, bool(style)))
+                plotter.scatter([cx], [cy], labels=name, size=size, ax=ax, opts=point_opts,
+                                marker=marker, zorder=10, **kw)
 
-        if not rows and not n_external:
+        if not rows:
             plotter.close(fig)
             raise InputError("No spectrum could be converted to CIE coordinates")
 
-        self.output(rows, ['Spectrum', 'CIE x', 'CIE y'], title='CIE coordinates', floatfmt='.4f')
+        self.output(rows, ['Name', 'Source', 'CIE x', 'CIE y'], title='CIE coordinates', floatfmt='.4f')
 
         n_entries = len(ax.get_legend_handles_labels()[0])
         plotter.finish(ax, opts, loc=opts.legend_loc or 'upper left', bbox_to_anchor=(1.02, 1),
                        borderaxespad=0, ncol=2 if n_entries > 20 else 1, title="Legend",
                        frameon=True, framealpha=1.0, fontsize='small')
+        # after finish(): placement depends on the final axis limits; points with a custom style
+        # (highlighted in the CSV) are labelled first, so they get the spot closest to the marker
+        marks.sort(key=lambda m: not m[4])
+        mx, my, mlabels, mhalf, _ = zip(*marks)
+        plotter.label_points(ax, mx, my, mlabels, marker_size=mhalf)
         self.save_figure(fig, self.plot_path('cie_diagram'))
 
 

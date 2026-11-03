@@ -4,6 +4,7 @@ Analyse the atomic-orbital composition of molecular orbitals.
 
 import numpy as np
 
+from frogchem.cleave_orbitals import is_open_shell
 from frogchem.cli.base import CLICommand, Guide, Output
 from frogchem.exceptions import InputError, ParseError
 from frogchem.filetypes import load_calculation
@@ -24,7 +25,7 @@ TYPE_CODES = {
 
 
 def _open_shell(calc) -> bool:
-    return getattr(calc, 'mult', 1) != 1 and hasattr(calc, 'alpha_occ')
+    return is_open_shell(calc) and hasattr(calc, 'alpha_occ')
 
 
 def get_homo_index(calc, beta=False):
@@ -43,7 +44,7 @@ def get_homo_index(calc, beta=False):
 
 
 def calculate_full_percent_matrix(calc, beta=False):
-    if getattr(calc, 'mult', 1) != 1 and hasattr(calc, 'alpha_coeff'):
+    if is_open_shell(calc) and hasattr(calc, 'alpha_coeff'):
         coeffs = calc.beta_coeff if beta else calc.alpha_coeff
     else:
         coeffs = calc.orbital_coefficients
@@ -259,6 +260,8 @@ class MoCoeff(CLICommand, name='frog-mo'):
         parser.add_argument('-b', '--buffer', type=int, default=None,
                             help='Number of MOs shown on each side of the HOMO (all MOs if omitted)')
         parser.add_argument('--beta', action='store_true', help='Use beta orbitals (open-shell calculations)')
+        parser.add_argument('--set', metavar='NAME', help='Orbital set of a cleave orbital file (.orbitals.json; '
+                                                          'default: the file\'s own)')
         self.add_out_dir_arg(parser)
         self.add_plot_args(parser, optional=True, default_name='<stem>_mo.png', cmap='rocket_r')
 
@@ -268,6 +271,10 @@ class MoCoeff(CLICommand, name='frog-mo'):
         for p in files:
             f = str(p)
             calc = load_calculation(f)
+            if args.set:
+                if not hasattr(calc, 'select'):
+                    raise InputError(f'--set needs a cleave orbital file, not {f}')
+                calc.select(args.set)
             if getattr(calc, 'orbital_coefficients', None) is None or getattr(calc, 'mask_atoms', None) is None:
                 print_warning(f'No MO coefficients found in {f} (ORCA: ! PrintBasis PrintMOs; Gaussian: pop=full)')
                 failed.append(f)

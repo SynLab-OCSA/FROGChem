@@ -28,6 +28,13 @@ final geometry is enough):
 * **Gaussian 16**: `#p ... pop=full iop(3/33=1) iop(6/80=1) gfinput` (`gfinput` prints the basis,
   `pop=full` every MO). Pure (`5D 7F`) and Cartesian (`6D 10F`) d/f functions both work, g functions
   do not; no `.chk`, `formchk` or `cubegen` is needed.
+* **cleave** (`almo`, `cdft`): nothing to add, every run writes `<name>.orbitals.json` with the
+  basis and several **orbital sets**: `full` (canonical MOs of the complex, the default),
+  `frag1`, `frag2`, ... (isolated fragments), `frozen` and `polarized` (ALMOs, non-orthogonal:
+  their density is computed exactly), `covp_forward`/`covp_backward` (with `almo --covp`: donor
+  and acceptor orbitals side by side, orbital cubes only), `cdft` and `hs` (CDFT state and its
+  high-spin partner). List them with `--list-sets`, choose one with `--set`; the cube names
+  carry the set (`dimer_polarized_density.cube`).
 
 Without them the command stops with an error telling you so. A spin density needs an open-shell
 calculation (multiplicity 2, 3, ...). Orbital numbers are **0-based**, as in ORCA's
@@ -40,7 +47,7 @@ and β sets (`--beta`).
 
 | Argument | Default | Description |
 |---|---|---|
-| `input` |  | ORCA output with ! PrintBasis PrintMOs, or Gaussian log with pop=full gfinput |
+| `input` |  | ORCA output with ! PrintBasis PrintMOs, Gaussian log with pop=full gfinput, or cleave .orbitals.json |
 
 **Options**
 
@@ -52,6 +59,8 @@ and β sets (`--beta`).
 | `--homo` |  | Compute the HOMO |
 | `--lumo` |  | Compute the LUMO |
 | `--beta` |  | Use beta orbitals (open-shell systems) |
+| `--set` `NAME` |  | Orbital set of a cleave orbital file (default: the file's own, e.g. full or cdft) |
+| `--list-sets` |  | List the orbital sets of a cleave orbital file and exit |
 | `--spacing` `SPACING` | `0.15` | Grid spacing in Å |
 | `--voxels` `VOXELS` |  | Number of grid points per axis (overrides --spacing) |
 | `--padding` `PADDING` | `3.0` | Box padding around the molecule in Å |
@@ -64,7 +73,7 @@ and β sets (`--beta`).
 | `-o`, `--output` `PATH` |  | Output cube path, or prefix ({prefix}_{tag}.cube) when several cubes are written; without it, cubes go next to the input |
 | `--out-dir` `DIR` |  | Directory for per-input output files (default: next to each input file) |
 
-Shared by every command: `-v/--verbose`, `-q/--quiet` — see [CLI conventions](conventions.md).
+Shared by every command: `-v/--verbose`, `-q/--quiet`, `--format`, `--table-file` — see [CLI conventions](conventions.md).
 
 ## Output
 
@@ -75,6 +84,7 @@ Shared by every command: `-v/--verbose`, `-q/--quiet` — see [CLI conventions](
 | File | `<stem>_homo.cube` | `--homo` | HOMO |
 | File | `<stem>_lumo.cube` | `--lumo` | LUMO |
 | File | `<stem>_orbital_<N>.cube` | `--orbital` | Orbital N (0-based) |
+| Table | `Orbital sets (<file>)` | `--list-sets` | Name, kind, spin channels, number of orbitals, orthonormality and description of each set of a cleave orbital file |
 
 ### How to read it
 
@@ -99,8 +109,9 @@ three 50×50×50 cubes of 1.75 MB each; HOMO = orbital 4 (values ±0.631), LUMO 
 1. Frontier orbitals: `frog-density job.out --homo --lumo` writes `job_homo.cube` and `job_lumo.cube` next to the output (or in `--out-dir`).
 2. Other cubes: `--density` (total density; also the default when no option is given), `--spin` (spin density, α − β), `--orbital 41 42` (0-based MO numbers); add `--beta` for β orbitals of an open-shell run.
 3. Control the grid: `--spacing` (Å, default 0.15) or `--voxels N` (N points per axis, overrides the spacing) and `--padding` (Å of empty space around the molecule, default 3.0). Use `--voxels 50` for a quick look, the default spacing or finer for numbers (e.g. `frog-spin`).
-4. Name the files with `-o name.cube` (one cube) or `-o prefix` (several cubes: `prefix_homo.cube`, ...), or use `--interactive` for a guided session.
-5. Open the cube in a viewer: isovalue about ±0.03–0.05 for orbitals, 0.02–0.05 e/bohr³ for the total density, ±0.002–0.005 for a spin density.
+4. cleave runs: `frog-density dimer.orbitals.json --list-sets`, then e.g. `--set polarized --density` (ALMO density of the polarized state) or `--set covp_forward --orbital 0 1` (leading COVP donor/acceptor pair); without `--set` the file's default set is used (`full` for `almo`, `cdft` for `cdft`).
+5. Name the files with `-o name.cube` (one cube) or `-o prefix` (several cubes: `prefix_homo.cube`, ...), or use `--interactive` for a guided session.
+6. Open the cube in a viewer: isovalue about ±0.03–0.05 for orbitals, 0.02–0.05 e/bohr³ for the total density, ±0.002–0.005 for a spin density.
 
 ## Real example
 
@@ -113,42 +124,55 @@ Every option, as printed by `frog-density --help`:
 
 :::{dropdown} `frog-density --help`
 ```text
-usage: frog-density [-h] [-v] [-q] [--density] [--spin] [--orbital N [N ...]] [--homo] [--lumo]
-                    [--beta] [--spacing SPACING] [--voxels VOXELS] [--padding PADDING] [-o PATH]
-                    [--out-dir DIR] [--interactive]
+usage: frog-density [-h] [-v] [-q] [--format {table,json,csv}] [--table-file PATH] [--density]
+                    [--spin] [--orbital N [N ...]] [--homo] [--lumo] [--beta] [--set NAME]
+                    [--list-sets] [--spacing SPACING] [--voxels VOXELS] [--padding PADDING]
+                    [-o PATH] [--out-dir DIR] [--interactive]
                     [input]
 
 Build electron density, spin density and molecular orbital cube files.
 
-Reads the basis set and MO coefficients from ORCA output (! PrintBasis PrintMOs) or a Gaussian log
-(pop=full gfinput). Without a selection the total electron density is computed. Use --interactive
-for a guided session.
+Reads the basis set and MO coefficients from ORCA output (! PrintBasis PrintMOs), a Gaussian log
+(pop=full gfinput) or a cleave orbital file (<name>.orbitals.json, written by every almo/cdft run;
+pick the orbital set with --set). Without a selection the total electron density is computed. Use
+--interactive for a guided session.
 
 positional arguments:
-  input                   ORCA output with ! PrintBasis PrintMOs, or Gaussian log with pop=full
-                          gfinput
+  input                      ORCA output with ! PrintBasis PrintMOs, Gaussian log with pop=full
+                             gfinput, or cleave .orbitals.json
 
 options:
-  -h, --help              show this help message and exit
-  --density               Compute the total electron density
-  --spin                  Compute the spin density
-  --orbital N [N ...]     Compute orbital(s) by index (0-based)
-  --homo                  Compute the HOMO
-  --lumo                  Compute the LUMO
-  --beta                  Use beta orbitals (open-shell systems)
-  --spacing SPACING       Grid spacing in Å (default: 0.15)
-  --voxels VOXELS         Number of grid points per axis (overrides --spacing)
-  --padding PADDING       Box padding around the molecule in Å (default: 3.0)
-  --interactive           Choose the file and the cubes interactively
+  -h, --help                 show this help message and exit
+  --density                  Compute the total electron density
+  --spin                     Compute the spin density
+  --orbital N [N ...]        Compute orbital(s) by index (0-based)
+  --homo                     Compute the HOMO
+  --lumo                     Compute the LUMO
+  --beta                     Use beta orbitals (open-shell systems)
+  --set NAME                 Orbital set of a cleave orbital file (default: the file's own, e.g.
+                             full or cdft)
+  --list-sets                List the orbital sets of a cleave orbital file and exit
+  --spacing SPACING          Grid spacing in Å (default: 0.15)
+  --voxels VOXELS            Number of grid points per axis (overrides --spacing)
+  --padding PADDING          Box padding around the molecule in Å (default: 3.0)
+  --interactive              Choose the file and the cubes interactively
 
 output:
-  -v, --verbose           Enable debug output
-  -q, --quiet             Suppress banner, info and saved-file messages
-  -o PATH, --output PATH  Output cube path, or prefix ({prefix}_{tag}.cube) when several cubes are
-                          written; without it, cubes go next to the input
-  --out-dir DIR           Directory for per-input output files (default: next to each input file)
+  -v, --verbose              Enable debug output
+  -q, --quiet                Suppress banner, info and saved-file messages
+  --format {table,json,csv}  Format of the tables printed on stdout (default: table)
+  --table-file PATH          Also write all tables to PATH (.json, .csv or .txt; otherwise the
+                             --format is used)
+  -o, --output PATH          Output cube path, or prefix ({prefix}_{tag}.cube) when several cubes
+                             are written; without it, cubes go next to the input
+  --out-dir DIR              Directory for per-input output files (default: next to each input
+                             file)
 
 outputs:
+  terminal (stdout; --format table|json|csv, --table-file PATH):
+    Orbital sets (<file>)       [--list-sets] Name, kind, spin channels, number of orbitals,
+                                orthonormality and description of each set of a cleave orbital
+                                file
   files (next to each input, or --out-dir):
     <stem>_density.cube         [--density, or no selection] Total electron density (e/bohr³)
     <stem>_spin_density.cube    [--spin] Spin density, alpha - beta (open-shell only)
@@ -163,6 +187,10 @@ examples:
       Write frontier_homo.cube and frontier_lumo.cube on a 60x60x60 grid
   frog-density opt.out --spin --orbital 41 42 --beta
       Spin density and beta orbitals 41 and 42
+  frog-density dimer.orbitals.json --list-sets
+      Orbital sets of a cleave run (almo/cdft)
+  frog-density dimer.orbitals.json --set polarized --density
+      Density of the polarized (ALMO) state of a cleave ALMO-EDA
 
 Data go to stdout, messages to stderr. Atom indices are 0-based unless stated otherwise.
 Step-by-step guide (what it is for, what you need, what to expect): docs/cli/frog-density.md.

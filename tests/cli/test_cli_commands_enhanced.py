@@ -570,6 +570,43 @@ label: Path 1
         cmd.main([csv_path, "-o", out_png])
         assert os.path.exists(out_png)
 
+    def test_cie_plot_external_only(self, tmp_path, capsys):
+        pytest.importorskip("colour")
+        from frogchem.cli.cie_plot import CiePlot
+        ext = tmp_path / "devices.csv"
+        ext.write_text("Name,CIEx,CIEy\nDevice A,0.1520,0.0890\nDevice B,0.3100,0.6200\n")
+        out_png = str(tmp_path / "cie.png")
+        CiePlot().main(["--external-coordinates", str(ext), "-o", out_png])
+        assert os.path.exists(out_png)
+        out = capsys.readouterr().out
+        assert "Device A" in out and "external" in out and "0.6200" in out
+
+    def test_cie_plot_external_marker_columns(self, tmp_path, monkeypatch):
+        pytest.importorskip("colour")
+        from frogchem import plotter
+        from frogchem.cli.cie_plot import CiePlot
+        ext = tmp_path / "devices.csv"
+        ext.write_text("Name,CIEx,CIEy,Marker,Color,Size\nLit 1,0.16,0.04,,,\n2a,0.1579,0.0245,*,gold,300\n")
+        seen = {}
+
+        def spy(fig, path, **kw):
+            ax = fig.axes[0]
+            seen['labels'] = [t.get_text() for t in ax.texts if t.get_text() in ('Lit 1', '2a')]
+            seen['star'] = [c for c in ax.collections if c.get_label() == '2a'][0]
+            plotter.close(fig)
+            return path
+        monkeypatch.setattr(plotter, "save_figure", spy)
+        CiePlot().main(["--external-coordinates", str(ext), "-o", str(tmp_path / "cie.png")])
+        assert seen['labels'][0] == '2a'                     # highlighted point labelled first
+        star = seen['star']
+        assert star.get_sizes()[0] == 300
+        assert np.allclose(star.get_facecolor()[0][:3], (1.0, 0.843, 0.0), atol=1e-3)
+
+    def test_cie_plot_requires_input(self):
+        from frogchem.cli.cie_plot import CiePlot
+        with pytest.raises(SystemExit):
+            CiePlot().main([])
+
     def test_md_analysis_thermo_and_plot(self, tmp_path):
         from frogchem.cli.md_analysis import parse_thermo, plot_combined_data
         mdout = tmp_path / "step.mdout"

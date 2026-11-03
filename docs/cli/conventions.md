@@ -81,6 +81,12 @@ writes and how it draws plots. The rules are enforced by `frogchem.cli.base.CLIC
   self.save_figure(fig, self.plot_path('spectra', tag='UV'))
   ```
 
+  `save_figure` applies matplotlib's tight layout before saving (and before `--show`), so titles,
+  axis labels and a legend placed outside the axes always fit; figures created with their own layout
+  engine (`layout='constrained'`) keep it, and `layout=False` turns it off. Point labels go through
+  `plotter.label_points(ax, x, y, texts)`, which keeps them from overlapping and places them again
+  after the layout and at every zoom of the `--show` window.
+
   `frog-profile` keeps its own style presets (`--style`, `--config`) and has no look options.
 
 ## 4. Flags
