@@ -4,6 +4,7 @@ from ORCA/Gaussian output or a cleave orbital file, from the command line or in 
 """
 
 import os
+import re
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
@@ -204,7 +205,9 @@ class ElectronicDensity(CLICommand, name='frog-density'):
             from InquirerPy import inquirer
             calc.select(inquirer.select(message='Orbital set:', choices=calc.set_names,
                                         default=calc.set_name).execute())
-        print_info(f'Orbital set: {calc.set_name} ({calc.set_info["description"]})')
+        # cleave files carry no "description" since their lean format: show the kind
+        about = calc.set_info.get('description') or calc.set_info.get('kind', '')
+        print_info(f'Orbital set: {calc.set_name} ({about})')
         return False
 
     @staticmethod
@@ -216,8 +219,13 @@ class ElectronicDensity(CLICommand, name='frog-density'):
 
     @staticmethod
     def _tag(calc, tag):
-        """Cube name tag; cleave files prefix the orbital set (polarized_density, ...)."""
-        return f'{calc.set_name}_{tag}' if hasattr(calc, 'set_name') else tag
+        """Cube name tag; cleave files prefix the orbital set (polarized_density, ...),
+        except per-set files (dimer.Frag1.orbitals.json), whose name already holds it."""
+        if not hasattr(calc, 'set_name'):
+            return tag
+        stem = Path(calc.fname).name.split('.orbitals.json')[0]
+        slug = re.sub(r'[^A-Za-z0-9._-]+', '-', calc.set_name).strip('-')
+        return tag if stem.endswith('.' + slug) else f'{calc.set_name}_{tag}'
 
     @staticmethod
     def _check_basis(calc, path):
