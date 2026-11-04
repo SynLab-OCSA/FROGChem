@@ -110,3 +110,16 @@ def test_frog_density_cli(tmp_path, capsys):
     with pytest.raises(SystemExit) as exc:
         ElectronicDensity().main([str(src), '--set', 'missing', '-q'])
     assert exc.value.code == 1
+
+
+def test_lean_per_set_file_without_description(tmp_path):
+    """Current cleave files: no "description", one file per listed set
+    (water.Frag1.orbitals.json): the cube name does not repeat the set."""
+    data = json.loads(FIXTURE.read_text())
+    name, st = 'cation', data['sets']['cation']
+    st.pop('description', None)
+    data['sets'] = {name: st}
+    src = tmp_path / f'water.{name}.orbitals.json'
+    src.write_text(json.dumps(data))
+    ElectronicDensity().main([str(src), '--density', '--voxels', '12'])
+    assert {p.name for p in tmp_path.glob('*.cube')} == {'water.cation_density.cube'}
