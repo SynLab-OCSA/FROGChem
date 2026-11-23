@@ -8,7 +8,7 @@ def chimerax_add_sphere(center, radius=.3, color='red', alpha=1, name=None):
     
     Args:
         center: (x, y, z) coordinates for sphere center
-        radius: sphere radius (default: 1.0)
+        radius: sphere radius (default: 0.3)
         color: sphere color name or RGB (default: 'red')
         alpha: transparency (0.0-1.0, default: 1.0)
         name: optional name for the sphere object
