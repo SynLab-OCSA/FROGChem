@@ -28,6 +28,7 @@ final geometry is enough):
 * **Gaussian 16**: `#p ... pop=full iop(3/33=1) iop(6/80=1) gfinput` (`gfinput` prints the basis,
   `pop=full` every MO). Pure (`5D 7F`) and Cartesian (`6D 10F`) d/f functions both work, g functions
   do not; no `.chk`, `formchk` or `cubegen` is needed.
+
 * **cleave** (`almo`, `cdft`): nothing to add, every run writes `<name>.orbitals.json` with the
   basis and several **orbital sets**: `full` (canonical MOs of the complex, the default),
   `frag1`, `frag2`, ... (isolated fragments), `frozen` and `polarized` (ALMOs, non-orthogonal:
@@ -39,7 +40,8 @@ final geometry is enough):
 Without them the command stops with an error telling you so. A spin density needs an open-shell
 calculation (multiplicity 2, 3, ...). Orbital numbers are **0-based**, as in ORCA's
 `ORBITAL ENERGIES` table (Gaussian's MO 1 is orbital 0); open-shell calculations have separate α
-and β sets (`--beta`).
+and β sets: the α set is used unless `--beta` is given, and `--beta` on a closed-shell calculation
+is an error.
 
 ### Arguments
 
@@ -58,11 +60,13 @@ and β sets (`--beta`).
 | `--orbital` `N …` |  | Compute orbital(s) by index (0-based) |
 | `--homo` |  | Compute the HOMO |
 | `--lumo` |  | Compute the LUMO |
+| `--frontier` `N` |  | HOMO-N ... HOMO and LUMO ... LUMO+N (--frontier 0 is HOMO and LUMO) |
+| `--split` |  | Write one cube per orbital instead of one multicube file |
 | `--beta` |  | Use beta orbitals (open-shell systems) |
 | `--set` `NAME` |  | Orbital set of a cleave orbital file (default: the file's own, e.g. full or cdft) |
 | `--list-sets` |  | List the orbital sets of a cleave orbital file and exit |
-| `--spacing` `SPACING` | `0.15` | Grid spacing in Å |
-| `--voxels` `VOXELS` |  | Number of grid points per axis (overrides --spacing) |
+| `--spacing` `SPACING` |  | Grid spacing in Å (instead of --voxels) |
+| `--voxels` `N …` | `80` | Grid points: N on every axis, or NX NY NZ (instead of --spacing) |
 | `--padding` `PADDING` | `3.0` | Box padding around the molecule in Å |
 | `--interactive` |  | Choose the file and the cubes interactively |
 
@@ -81,20 +85,31 @@ Shared by every command: `-v/--verbose`, `-q/--quiet`, `--format`, `--table-file
 |---|---|---|---|
 | File | `<stem>_density.cube` | `--density, or no selection` | Total electron density (e/bohr³) |
 | File | `<stem>_spin_density.cube` | `--spin` | Spin density, alpha - beta (open-shell only) |
-| File | `<stem>_homo.cube` | `--homo` | HOMO |
-| File | `<stem>_lumo.cube` | `--lumo` | LUMO |
-| File | `<stem>_orbital_<N>.cube` | `--orbital` | Orbital N (0-based) |
+| File | `<stem>_orbitals.cube` | `2 or more orbitals (--homo, --lumo, --frontier, --orbital)` | Multicube: all the selected orbitals in one file (cube ids are index + 1); open-shell: _orbitals_alpha / _orbitals_beta |
+| File | `<stem>_homo.cube` | `--homo with --split` | HOMO, one file per orbital |
+| File | `<stem>_lumo.cube` | `--lumo with --split` | LUMO, one file per orbital |
+| File | `<stem>_orbital_<N>.cube` | `--orbital with --split, or a single orbital` | Orbital N (0-based), one file per orbital |
 | Table | `Orbital sets (<file>)` | `--list-sets` | Name, kind, spin channels, number of orbitals, orthonormality and description of each set of a cleave orbital file |
 
 ### How to read it
 
 One `.cube` file per requested quantity and a *Saved cube* line for each, preceded by the grid
-size and the value range of the cube (hidden with `-q`). Values are in atomic units: e/bohr³ for densities, bohr^−3/2
-for orbitals (whose sign is arbitrary: the two lobes have opposite colours, and swapping them changes
-nothing physically).
+size and the value range of the cube (hidden with `-q`). Values are in atomic units: e/bohr³ for
+densities, bohr^−3/2 for orbitals.
 
-* File size and time grow with the number of points: a 50×50×50 grid is about 1.7 MB, while the
-  default 0.15 Å spacing on a large molecule can give tens of MB and take minutes.
+* Every run starts with the HOMO and LUMO, e.g. `HOMO = 15, LUMO = 16  (0-based; cube ids 16, 17)`,
+  for both spins in an open-shell run. Indices are 0-based, as everywhere in FROG; the ids written
+  inside a cube file are 1-based (index + 1), as cubegen writes them.
+* Two or more orbitals go into one **multicube**, `<stem>_orbitals.cube`, listed in a table (index,
+  cube id, H/L label, energy in eV). Its header has a negative atom count followed by the orbital
+  ids (Gaussian `10I5` record); the values of all the orbitals are stored point by point.
+  ChimeraX's own cube reader takes only the first line of ids, so it misreads multicubes with 10 or
+  more orbitals (checked with ChimeraX 1.12; the command warns): use `--split` for ChimeraX.
+* The sign of an orbital is arbitrary. FROG flips each orbital so that its largest lobe is
+  positive, so the colours stay the same from run to run and between ORCA and Gaussian; densities
+  are not affected.
+* File size and time grow with the number of points and of orbitals: the default 80×80×80 grid
+  is about 6.7 MB per orbital, and a multicube of N orbitals is N times that.
 * A spin density of a closed-shell (singlet) calculation is zero: the command prints a warning and
   writes no file.
 * If an isosurface looks cut at the box edge, increase `--padding`; if it looks blocky, use a
@@ -102,16 +117,17 @@ nothing physically).
 * HOMO and LUMO are taken from the occupations (α set by default; β with `--beta`).
 
 Example (water, B3LYP/def2-TZVPP with `! PrintBasis PrintMOs`, `--density --homo --lumo --voxels 50`):
-three 50×50×50 cubes of 1.75 MB each; HOMO = orbital 4 (values ±0.631), LUMO = orbital 5.
+a 50×50×50 density cube of about 1.6 MB and a multicube with HOMO (orbital 4, values ±0.631) and
+LUMO (orbital 5) of about 3.3 MB.
 
 ## Step by step
 
-1. Frontier orbitals: `frog-density job.out --homo --lumo` writes `job_homo.cube` and `job_lumo.cube` next to the output (or in `--out-dir`).
-2. Other cubes: `--density` (total density; also the default when no option is given), `--spin` (spin density, α − β), `--orbital 41 42` (0-based MO numbers); add `--beta` for β orbitals of an open-shell run.
-3. Control the grid: `--spacing` (Å, default 0.15) or `--voxels N` (N points per axis, overrides the spacing) and `--padding` (Å of empty space around the molecule, default 3.0). Use `--voxels 50` for a quick look, the default spacing or finer for numbers (e.g. `frog-spin`).
+1. Frontier orbitals: `frog-density job.out --homo --lumo` writes one multicube `job_orbitals.cube` with both orbitals, next to the output (or in `--out-dir`); `--frontier N` takes HOMO−N … HOMO and LUMO … LUMO+N (`--frontier 2`: six orbitals). Add `--split` for one file per orbital (`job_homo.cube`, `job_lumo.cube`, `job_orbital_<N>.cube`). Every run prints the HOMO and LUMO numbers.
+2. Other cubes: `--density` (total density; also the default when no option is given), `--spin` (spin density, α − β), `--orbital 41 42` (0-based MO numbers). In an open-shell run the orbitals are α unless you add `--beta`, and the command says which set it uses; `--beta` on a closed-shell run is an error, since it has no β orbitals.
+3. Control the grid: `--voxels N` (N points on every axis, default 80) or `--voxels NX NY NZ` (one count per axis), or `--spacing` (Å) instead: give one of the two, not both. `--padding` is the empty space around the molecule (Å, default 3.0). Use `--voxels 50` for a quick look, a finer grid for numbers (e.g. `frog-spin`).
 4. cleave runs: `frog-density dimer.orbitals.json --list-sets`, then e.g. `--set polarized --density` (ALMO density of the polarized state) or `--set covp_forward --orbital 0 1` (leading COVP donor/acceptor pair); without `--set` the file's default set is used (`full` for `almo`, `cdft` for `cdft`).
-5. Name the files with `-o name.cube` (one cube) or `-o prefix` (several cubes: `prefix_homo.cube`, ...), or use `--interactive` for a guided session.
-6. Open the cube in a viewer: isovalue about ±0.03–0.05 for orbitals, 0.02–0.05 e/bohr³ for the total density, ±0.002–0.005 for a spin density.
+5. Name the files with `-o name.cube` (one file, a multicube included) or `-o prefix` (several files: `prefix_density.cube`, `prefix_orbitals.cube`, ...), or use `--interactive` for a guided session (it asks α or β in an open-shell run).
+6. Open the cube in a viewer: isovalue about ±0.03–0.05 for orbitals, 0.02–0.05 e/bohr³ for the total density, ±0.002–0.005 for a spin density. ChimeraX's own cube reader misreads multicubes with 10 or more orbitals: use `--split` there, or `frog-tddft --orbital-grid`, whose script reads the file itself.
 
 ## Real example
 
@@ -125,9 +141,9 @@ Every option, as printed by `frog-density --help`:
 :::{dropdown} `frog-density --help`
 ```text
 usage: frog-density [-h] [-v] [-q] [--format {table,json,csv}] [--table-file PATH] [--density]
-                    [--spin] [--orbital N [N ...]] [--homo] [--lumo] [--beta] [--set NAME]
-                    [--list-sets] [--spacing SPACING] [--voxels VOXELS] [--padding PADDING]
-                    [-o PATH] [--out-dir DIR] [--interactive]
+                    [--spin] [--orbital N [N ...]] [--homo] [--lumo] [--frontier N] [--split]
+                    [--beta] [--set NAME] [--list-sets] [--spacing SPACING] [--voxels N [N ...]]
+                    [--padding PADDING] [-o PATH] [--out-dir DIR] [--interactive]
                     [input]
 
 Build electron density, spin density and molecular orbital cube files.
@@ -148,12 +164,15 @@ options:
   --orbital N [N ...]        Compute orbital(s) by index (0-based)
   --homo                     Compute the HOMO
   --lumo                     Compute the LUMO
+  --frontier N               HOMO-N ... HOMO and LUMO ... LUMO+N (--frontier 0 is HOMO and LUMO)
+  --split                    Write one cube per orbital instead of one multicube file
   --beta                     Use beta orbitals (open-shell systems)
   --set NAME                 Orbital set of a cleave orbital file (default: the file's own, e.g.
                              full or cdft)
   --list-sets                List the orbital sets of a cleave orbital file and exit
-  --spacing SPACING          Grid spacing in Å (default: 0.15)
-  --voxels VOXELS            Number of grid points per axis (overrides --spacing)
+  --spacing SPACING          Grid spacing in Å (instead of --voxels)
+  --voxels N [N ...]         Grid points: N on every axis, or NX NY NZ (instead of --spacing)
+                             (default: 80)
   --padding PADDING          Box padding around the molecule in Å (default: 3.0)
   --interactive              Choose the file and the cubes interactively
 
@@ -176,15 +195,22 @@ outputs:
   files (next to each input, or --out-dir):
     <stem>_density.cube         [--density, or no selection] Total electron density (e/bohr³)
     <stem>_spin_density.cube    [--spin] Spin density, alpha - beta (open-shell only)
-    <stem>_homo.cube            [--homo] HOMO
-    <stem>_lumo.cube            [--lumo] LUMO
-    <stem>_orbital_<N>.cube     [--orbital] Orbital N (0-based)
+    <stem>_orbitals.cube        [2 or more orbitals (--homo, --lumo, --frontier, --orbital)]
+                                Multicube: all the selected orbitals in one file (cube ids are
+                                index + 1); open-shell: _orbitals_alpha / _orbitals_beta
+    <stem>_homo.cube            [--homo with --split] HOMO, one file per orbital
+    <stem>_lumo.cube            [--lumo with --split] LUMO, one file per orbital
+    <stem>_orbital_<N>.cube     [--orbital with --split, or a single orbital] Orbital N (0-based),
+                                one file per orbital
 
 examples:
   frog-density opt.out
       Total electron density cube next to opt.out
-  frog-density opt.out --homo --lumo --voxels 60 -o frontier
-      Write frontier_homo.cube and frontier_lumo.cube on a 60x60x60 grid
+  frog-density opt.out --frontier 2 --voxels 60 -o frontier
+      One multicube frontier.cube with HOMO-2 ... LUMO+2 on a 60x60x60 grid (cube ids
+      1-based)
+  frog-density opt.out --homo --lumo --split --voxels 60 -o frontier
+      Write frontier_homo.cube and frontier_lumo.cube, one file per orbital
   frog-density opt.out --spin --orbital 41 42 --beta
       Spin density and beta orbitals 41 and 42
   frog-density dimer.orbitals.json --list-sets

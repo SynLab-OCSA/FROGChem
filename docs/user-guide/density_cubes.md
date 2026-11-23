@@ -25,9 +25,17 @@ Units: densities in e/bohr³, orbitals in bohr⁻³ᐟ², solvent surfaces as a 
 frog-density files/tddft_mos.out --homo --lumo --density --voxels 50 --out-dir cubes
 ```
 
-writes `cubes/tddft_mos_homo.cube`, `..._lumo.cube` and `..._density.cube` (50×50×50 points, 1.75 MB each).
-Other options: `--orbital 41 42` (0-based MO numbers), `--spin` (α − β spin density of an open-shell
-calculation), `--beta` (β orbitals), `--spacing`/`--voxels`/`--padding` for the grid.
+writes `cubes/tddft_mos_density.cube` (50×50×50 points, 1.6 MB) and one **multicube**,
+`cubes/tddft_mos_orbitals.cube`, with HOMO and LUMO (3.3 MB). Every run prints the HOMO and LUMO numbers
+(0-based index; the ids inside the cube file are index + 1). Other options: `--frontier N` (HOMO−N … HOMO
+and LUMO … LUMO+N in one multicube), `--split` (one file per orbital, `..._homo.cube`, `..._lumo.cube`),
+`--orbital 41 42` (0-based MO numbers), `--spin` (α − β spin density of an open-shell calculation),
+`--beta` (β orbitals of an open-shell calculation; an error for a closed-shell one), and for the grid
+`--voxels N` or `--voxels NX NY NZ` (default 80 per axis) or `--spacing` (one of the two, not both), and
+`--padding`.
+
+ChimeraX's own cube reader misreads multicubes with 10 or more orbitals: for ChimeraX use `--split`, or
+`frog-tddft --orbital-grid`, which writes a ChimeraX script that reads the multicube itself.
 
 Typical isovalues: ±0.03–0.05 for orbitals, 0.02–0.05 e/bohr³ for the total density, ±0.002–0.005 for spin
 densities and density differences.
@@ -112,4 +120,4 @@ writes `surfaces/water_sas.cube` (solvent accessible surface, traced by the cent
 the enclosed volumes: 124.50 Å³ (SAS) and 19.85 Å³ (SES) for water. Radii are Bondi van der Waals radii
 (`--vdw-offset` to enlarge them), the probe radius is `--probe-radius`. The cube values are a signed
 distance in Å (negative inside): draw the isosurface at **0.0**. At the default 0.1 Å spacing each cube is
-about 28 MB even for water: use `--spacing 0.2` for large molecules.
+about 27 MB even for water: use `--spacing 0.2` for large molecules.

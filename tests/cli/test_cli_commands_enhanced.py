@@ -650,8 +650,12 @@ label: Path 1
             cmd.main([str(orb_file), "-o", "custom.cube", "--voxels", "5", "--padding", "1.0"])
             assert (tmp_path / "custom.cube").exists()
 
-            # 2. HOMO and LUMO with prefix
+            # 2. HOMO and LUMO: one multicube by default, one cube per orbital with --split
             cmd.main([str(orb_file), "--homo", "--lumo", "-o", "frontier.cube", "--voxels", "5", "--padding", "1.0"])
+            assert (tmp_path / "frontier.cube").exists()
+            assert not (tmp_path / "frontier_homo.cube").exists()
+            cmd.main([str(orb_file), "--homo", "--lumo", "--split", "-o", "frontier.cube",
+                      "--voxels", "5", "--padding", "1.0"])
             assert (tmp_path / "frontier_homo.cube").exists()
             assert (tmp_path / "frontier_lumo.cube").exists()
 

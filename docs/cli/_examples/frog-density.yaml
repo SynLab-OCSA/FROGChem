@@ -22,11 +22,30 @@ steps:
       * The header shows the 50-point axes with different steps (0.293814, 0.303470, 0.231395 bohr): with
         `--voxels` every axis has the same number of points over a box of a different length.
   - text: |
-      **2. Total density and a chosen orbital of water** at the default 0.15 Å spacing, with `-o` as a
-      prefix because two cubes are written.
+      **2. Total density and a chosen orbital of water** on the default grid (80 points per axis), with `-o`
+      as a prefix because two cubes are written.
     cmd: mkdir -p cubes && frog-density tests/data/gaussian_ref/orca/g01_h2o_pure.out --density --orbital 5 -o cubes/h2o
     after: |
-      With the default spacing the axes have different numbers of points (52 × 45 × 41). Both cubes of this
-      run share that grid, so they can be combined with `frog-cube`. The maximum of the total density,
-      185.610135 e/bohr³, is at the grid point closest to the O nucleus; this is why total densities are drawn at 0.02–0.05 and not at
-      their maximum. Orbital 5 is the LUMO of water (5 doubly occupied MOs, numbered from 0).
+      Both cubes share the 80 × 80 × 80 grid, so they can be combined with `frog-cube`. The maximum of the total
+      density, 51.060872 e/bohr³, is at the grid point closest to the O nucleus (a finer grid, closer to the
+      nucleus, gives a larger value); this is why total densities are drawn at 0.02–0.05 and not at their
+      maximum. Orbital 5 is the LUMO of water (5 doubly occupied MOs, numbered from 0). A single orbital is
+      written as an ordinary cube.
+  - text: |
+      **3. Frontier orbitals of water in one multicube**: `--frontier 1` takes HOMO−1, HOMO, LUMO and LUMO+1.
+    cmd: frog-density tests/data/gaussian_ref/orca/g01_h2o_pure.out --frontier 1 --voxels 40 --out-dir cubes
+    show_files:
+      - path: cubes/g01_h2o_pure_orbitals.cube
+        lines: 11
+    after: |
+      * The table lists the four orbitals with their 0-based index and the id written in the file
+        (index + 1), the H/L label and the energy.
+      * In the header the atom count is negative (`-3`): it announces the line after the atoms,
+        `4 4 5 6 7`, that is four orbitals with ids 4–7. Then come the values: the four orbitals at the first
+        grid point, then at the second, and so on.
+      * ChimeraX reads such a file as one volume per orbital, correctly up to 9 orbitals; with 10 or more the
+        command warns, and `--split` writes separate cubes.
+  - text: |
+      **4. `--beta` on a closed-shell calculation** stops with an error instead of silently using the α orbitals.
+    cmd: frog-density tests/data/gaussian_ref/orca/g01_h2o_pure.out --homo --beta --voxels 20 --out-dir cubes
+    expect_rc: 1

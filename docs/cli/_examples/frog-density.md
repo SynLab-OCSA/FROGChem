@@ -15,6 +15,9 @@ frog-density tests/data/gaussian_ref/orca/g03_ch3_uks.out --spin --homo --voxels
 ```
 
 ```text
+ℹ  Open-shell calculation: the orbitals are alpha unless --beta is given
+ℹ  HOMO = 4, LUMO = 5 (alpha)  (0-based; cube ids 5, 6)
+ℹ  HOMO = 3, LUMO = 4 (beta)  (0-based; cube ids 4, 5)
 ℹ  Building spin density cube -> cubes/g03_ch3_uks_spin_density.cube
 ℹ  basis functions: 49
 ℹ  MOs: 98
@@ -28,7 +31,7 @@ frog-density tests/data/gaussian_ref/orca/g03_ch3_uks.out --spin --homo --voxels
 ℹ  MOs: 98
 ℹ  atoms: 4
 ℹ  grid: 50 x 50 x 50 = 125,000 points
-ℹ  evaluating orbital 4...
+ℹ  evaluating 1 orbital(s) (alpha) on the grid...
 ℹ  range: [-0.387466, 0.387466]
 ✔  Saved cube: cubes/g03_ch3_uks_homo.cube
 ```
@@ -42,10 +45,10 @@ Grid: 50x50x50 voxels
    50    0.293814    0.000000    0.000000
    50    0.000000    0.303470    0.000000
    50    0.000000    0.000000    0.231395
-    6    0.000000    0.000000    0.000000    0.000000
-    1    0.000000    2.039014    0.000000    0.000000
-    1    0.000000   -1.019507    1.765837    0.000000
-    1    0.000000   -1.019507   -1.765837    0.000000
+    6    6.000000    0.000000    0.000000    0.000000
+    1    1.000000    2.039014    0.000000    0.000000
+    1    1.000000   -1.019507    1.765837    0.000000
+    1    1.000000   -1.019507   -1.765837    0.000000
 …
 ```
 
@@ -57,33 +60,97 @@ Grid: 50x50x50 voxels
 * The header shows the 50-point axes with different steps (0.293814, 0.303470, 0.231395 bohr): with
   `--voxels` every axis has the same number of points over a box of a different length.
 
-**2. Total density and a chosen orbital of water** at the default 0.15 Å spacing, with `-o` as a
-prefix because two cubes are written.
+**2. Total density and a chosen orbital of water** on the default grid (80 points per axis), with `-o`
+as a prefix because two cubes are written.
 
 ```bash
 mkdir -p cubes && frog-density tests/data/gaussian_ref/orca/g01_h2o_pure.out --density --orbital 5 -o cubes/h2o
 ```
 
 ```text
+ℹ  HOMO = 4, LUMO = 5  (0-based; cube ids 5, 6)
 ℹ  Building electron density cube -> cubes/h2o_density.cube
 ℹ  basis functions: 59
 ℹ  MOs: 59
 ℹ  atoms: 3
-ℹ  grid: 52 x 45 x 41 = 95,940 points
+ℹ  grid: 80 x 80 x 80 = 512,000 points
 ℹ  evaluating density...
-ℹ  range: [0.000000, 185.610135]
+ℹ  range: [0.000000, 51.060872]
 ✔  Saved cube: cubes/h2o_density.cube
 ℹ  Building orbital 5 cube -> cubes/h2o_orbital_5.cube
 ℹ  basis functions: 59
 ℹ  MOs: 59
 ℹ  atoms: 3
-ℹ  grid: 52 x 45 x 41 = 95,940 points
-ℹ  evaluating orbital 5...
-ℹ  range: [-0.305075, 0.667718]
+ℹ  grid: 80 x 80 x 80 = 512,000 points
+ℹ  evaluating 1 orbital(s) (closed-shell) on the grid...
+ℹ  range: [-0.307302, 0.334505]
 ✔  Saved cube: cubes/h2o_orbital_5.cube
 ```
 
-With the default spacing the axes have different numbers of points (52 × 45 × 41). Both cubes of this
-run share that grid, so they can be combined with `frog-cube`. The maximum of the total density,
-185.610135 e/bohr³, is at the grid point closest to the O nucleus; this is why total densities are drawn at 0.02–0.05 and not at
-their maximum. Orbital 5 is the LUMO of water (5 doubly occupied MOs, numbered from 0).
+Both cubes share the 80 × 80 × 80 grid, so they can be combined with `frog-cube`. The maximum of the total
+density, 51.060872 e/bohr³, is at the grid point closest to the O nucleus (a finer grid, closer to the
+nucleus, gives a larger value); this is why total densities are drawn at 0.02–0.05 and not at their
+maximum. Orbital 5 is the LUMO of water (5 doubly occupied MOs, numbered from 0). A single orbital is
+written as an ordinary cube.
+
+**3. Frontier orbitals of water in one multicube**: `--frontier 1` takes HOMO−1, HOMO, LUMO and LUMO+1.
+
+```bash
+frog-density tests/data/gaussian_ref/orca/g01_h2o_pure.out --frontier 1 --voxels 40 --out-dir cubes
+```
+
+```text
+ℹ  HOMO = 4, LUMO = 5  (0-based; cube ids 5, 6)
+        Orbitals in the multicube
+╭───────┬─────────┬───────┬─────────────╮
+│ Index │ Cube id │ Label │ Energy (eV) │
+├───────┼─────────┼───────┼─────────────┤
+│     3 │       4 │ H-1   │ -10.56      │
+│     4 │       5 │ H     │ -8.64       │
+│     5 │       6 │ L     │ +0.44       │
+│     6 │       7 │ L+1   │ +2.51       │
+╰───────┴─────────┴───────┴─────────────╯
+ℹ  Building multicube of 4 orbitals (MO ids [4, 5, 6, 7]) -> cubes/g01_h2o_pure_orbitals.cube
+ℹ  basis functions: 59
+ℹ  MOs: 59
+ℹ  atoms: 3
+ℹ  grid: 40 x 40 x 40 = 64,000 points
+ℹ  evaluating 4 orbital(s) (closed-shell) on the grid...
+ℹ  range: [-0.623290, 0.623290]
+✔  Saved cube: cubes/g01_h2o_pure_orbitals.cube
+```
+
+`cubes/g01_h2o_pure_orbitals.cube` (first 11 lines):
+
+```text
+Orbitals (closed-shell) from tests/data/gaussian_ref/orca/g01_h2o_pure.out
+Grid: 40x40x40 voxels; MO ids (1-based): 4 5 6 7
+   -3   -7.116708   -6.375935   -5.669178
+   40    0.364911    0.000000    0.000000
+   40    0.000000    0.318007    0.000000
+   40    0.000000    0.000000    0.290727
+    8    8.000000    0.001890   -0.706758    0.000000
+    1    1.000000   -1.447530    0.349599    0.000000
+    1    1.000000    1.445640    0.357158    0.000000
+    4    4    5    6    7
+ -7.27732E-08 -5.45692E-10  1.63821E-06 -2.71386E-06 -1.01184E-07 -9.07588E-10
+…
+```
+
+* The table lists the four orbitals with their 0-based index and the id written in the file
+  (index + 1), the H/L label and the energy.
+* In the header the atom count is negative (`-3`): it announces the line after the atoms,
+  `4 4 5 6 7`, that is four orbitals with ids 4–7. Then come the values: the four orbitals at the first
+  grid point, then at the second, and so on.
+* ChimeraX reads such a file as one volume per orbital, correctly up to 9 orbitals; with 10 or more the
+  command warns, and `--split` writes separate cubes.
+
+**4. `--beta` on a closed-shell calculation** stops with an error instead of silently using the α orbitals.
+
+```bash
+frog-density tests/data/gaussian_ref/orca/g01_h2o_pure.out --homo --beta --voxels 20 --out-dir cubes
+```
+
+```text
+✖  ERROR: --beta: this calculation is closed-shell (multiplicity 1), it has no beta orbitals; drop --beta
+```
