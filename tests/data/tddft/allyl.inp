@@ -1,0 +1,12 @@
+! UKS B3LYP def2-SVP TightSCF PrintBasis PrintMOs
+%tddft nroots 6 tda true end
+* xyz 0 2
+C   0.000   0.000   0.000
+C   1.230   0.700   0.000
+C  -1.230   0.700   0.000
+H   0.000  -1.090   0.000
+H   2.170   0.150   0.000
+H   1.260   1.790   0.000
+H  -2.170   0.150   0.000
+H  -1.260   1.790   0.000
+*

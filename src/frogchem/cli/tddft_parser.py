@@ -16,6 +16,7 @@ from frogchem.exceptions import InputError
 from frogchem.io import parse_gaussian_cube, write_gaussian_cube
 from frogchem.math_geometry import calculate_centroids
 from frogchem.chimera_commands import chimerax_add_sphere
+from frogchem.orbital_character import parse_indices as _index_tokens
 
 # ponytail: matplotlib is lazily imported inside create_plot (through frogchem.plotter)
 
@@ -546,21 +547,6 @@ def process_calc_dct(calc, file_path: str, args, cmd: CLICommand,
     return commands
 
 
-def _index_tokens(tokens) -> List[int]:
-    """0-based orbital indices from tokens like 14-17, 20 or 14,15 16."""
-    out: Set[int] = set()
-    for tok in tokens:
-        for part in str(tok).replace(' ', '').split(','):
-            if not part:
-                continue
-            if '-' in part:
-                a, b = part.split('-', 1)
-                out.update(range(int(a), int(b) + 1))
-            else:
-                out.add(int(part))
-    return sorted(out)
-
-
 def _dct_selected(dct_filter, mult: int, state_num: int) -> bool:
     """Same rule as process_calc_dct: a state passes the --dct-states / --grid-states filter."""
     if dct_filter is None:
@@ -570,6 +556,20 @@ def _dct_selected(dct_filter, mult: int, state_num: int) -> bool:
     if None in dct_filter:
         return state_num in dct_filter[None]
     return False
+
+
+def _sorted_states(calc) -> List[Tuple[float, int, int, Dict[str, Any]]]:
+    """(energy, multiplicity, number, state) of every excited state, lowest energy first."""
+    states = [(float(st.get('energy', 0.0)), mult, n, st)
+              for mult in calc.tddft_states for n, st in calc.tddft_states[mult].items()]
+    return sorted(states, key=lambda t: t[0])
+
+
+def _chosen_states(calc, tokens, default_n: int):
+    """States picked by labels such as S1-S3 T1 (--grid-states, --diagram-states), else the lowest default_n."""
+    states = _sorted_states(calc)
+    sel = parse_dct_state_selection(tokens)
+    return states[:default_n] if sel is None else [t for t in states if _dct_selected(sel, t[1], t[2])]
 
 
 #: Above this many orbitals the ChimeraX grid gets crowded: warn, and ask in a terminal.
@@ -640,13 +640,7 @@ def process_orbital_grid(calc, file_path: str, args, cmd: CLICommand, dct_cubes:
             return None
         return float(en_all[i]) * 27.211386
 
-    states = []
-    for mult in calc.tddft_states:
-        for n, st in calc.tddft_states[mult].items():
-            states.append((float(st.get('energy', 0.0)), mult, n, st))
-    states.sort(key=lambda t: t[0])
-    sel = parse_dct_state_selection(args.grid_states)
-    chosen = states[:4] if sel is None else [t for t in states if _dct_selected(sel, t[1], t[2])]
+    chosen = _chosen_states(calc, args.grid_states, 4)
     if not chosen:
         raise InputError(f"No excited state of {file_path} matches --grid-states")
 
@@ -719,6 +713,70 @@ def process_orbital_grid(calc, file_path: str, args, cmd: CLICommand, dct_cubes:
     cmd.saved(script, 'ChimeraX grid script')
 
 
+def process_transition_diagram(calc, file_path: str, input_path: Path, args, cmd: CLICommand) -> None:
+    """State character (n→π*, π→π*, CT between --frag fragments) and the orbital transition diagram."""
+    from frogchem import orbital_character as oc
+    from frogchem import transition_diagram as td
+
+    want_char = bool(args.frag or args.diagram_pick)
+    fragments = oc.parse_fragments(args.frag, len(calc.atoms)) if args.frag else []
+    if args.diagram_pick and 'ct' in args.diagram_pick and len(fragments) != 2:
+        raise InputError("--diagram-pick ct needs two fragments: --frag A B (e.g. --frag 0-5 6-11)")
+    if want_char:
+        analysis = oc.analyse_orbitals(calc, fragments)
+    else:
+        analysis = oc.analyse_orbitals(calc) if oc.has_mos(calc) else None
+
+    states = _sorted_states(calc)
+    chars = [oc.state_character(st, analysis) if analysis else None for *_, st in states]
+    name = Path(file_path).name
+    if want_char:
+        keys = ['n→π*', 'π→π*'] + (['A→B', 'B→A', 'A loc', 'B loc'] if len(fragments) == 2 else [])
+        rows = [[state_label(m, n), e, float(st.get('fosc', 0.0))] + [ch[k] for k in keys] + [ch['type']]
+                for (e, m, n, st), ch in zip(states, chars)]
+        cmd.output(rows, headers=['State', 'Energy (eV)', 'f'] + keys + ['Type'],
+                   title=f"State Character ({name})")
+
+    if args.diagram_states or not args.diagram_pick:
+        chosen_ids = {id(t[3]) for t in _chosen_states(calc, args.diagram_states, 6)}
+        chosen = {k for k, t in enumerate(states) if id(t[3]) in chosen_ids}
+    else:
+        chosen = set()
+    for pick in args.diagram_pick or []:
+        k, best = oc.pick_state(chars, pick)
+        if k is None:
+            print_warning(f"{name}: no {pick} state (largest share {best:.2f}, needed {oc.DOMINANT})")
+        else:
+            print_info(f"{name}: {pick} → {state_label(states[k][1], states[k][2])} ({chars[k]['type']})")
+            chosen.add(k)
+    if not args.transition_diagram:
+        return
+    if not chosen:
+        print_warning(f"{name}: no state to draw, transition diagram not written")
+        return
+
+    data = td.collect(calc, [(state_label(states[k][1], states[k][2]), states[k][3], chars[k])
+                             for k in sorted(chosen)],
+                      wmin=args.diagram_weight, fmin=args.diagram_fmin, analysis=analysis,
+                      labels=td.parse_level_labels(args.diagram_labels), title=name)
+    frag_cols = ['% A', '% B'][:data.n_fragments]
+    rows = []
+    for col in data.columns:
+        orb = oc.orbitals_of(analysis, col) if analysis else None
+        en = data.energies.get(col)
+        for mo in sorted(data.levels[col], reverse=True):
+            row = [mo] + ([{'a': 'α', 'b': 'β'}[col]] if data.open_shell else [])
+            row += [td.orbital_name(mo, col, data, short=True),
+                    orb.types[mo] if orb is not None and mo < len(orb.types) else '',
+                    float(en[mo]) if en is not None and mo < len(en) else 'N/A']
+            row += [100 * float(orb.fragments[j][mo]) for j in range(data.n_fragments)]
+            rows.append(row)
+    cmd.output(rows, headers=['Index'] + (['Spin'] if data.open_shell else []) + ['Label', 'Type', 'Energy (eV)']
+               + frag_cols, title=f"Orbitals of the diagram ({name})", floatfmt='.2f')
+    fig = td.draw(data, cmd.plot_options())
+    cmd.save_figure(fig, cmd.derived_path(input_path, 'transitions', args.fig_format), layout=False)
+
+
 _SPECTRA = (('uv', 'UV', 'fosc'), ('ecd', 'ECD', 'R'))
 
 
@@ -748,6 +806,13 @@ class TddftParser(CLICommand, name='frog-tddft'):
         Output('table', 'Orbitals of the grid (<file>)',
                'Index, cube id (index + 1), H/L label and energy (eV) of each orbital of the grid',
                when='--orbital-grid'),
+        Output('table', 'State Character (<file>)',
+               'Per state: energy, f, share of n→π* and π→π* transitions and, with two --frag fragments, '
+               'A→B, B→A, A loc, B loc; Type = share ≥ 0.5 (CT first), else mixed',
+               when='--frag/--diagram-pick'),
+        Output('table', 'Orbitals of the diagram (<file>)',
+               'Index (0-based), [spin], H/L label, type (n, π, π*, σ, σ*), energy (eV) and % on each '
+               'fragment of every level of the diagram', when='--transition-diagram'),
         Output('table', 'Charge Transfer Distance (CUBE)', 'Δr (Å), CT dipole q_CT·Δr (e·Å) and grid size of each CUBE input'),
         ENSEMBLE_WEIGHTS,
         Output('table', 'Ensemble-Averaged Excited States (Boltzmann Weighted)',
@@ -768,6 +833,9 @@ class TddftParser(CLICommand, name='frog-tddft'):
                                      'Energy_eV, Wavelength_nm, one column per curve', when='--save-spectra'),
         Output('file', '<plot>.pickle', 'Pickled matplotlib figure of every saved spectrum plot',
                when='--save-pickle'),
+        Output('plot', '<stem>_transitions.png', 'Orbital levels (one column, or α | β for open shell) with one '
+                                                 'arrow per transition of the chosen states and a legend',
+               when='--transition-diagram'),
         Output('plot', '<stem>_UV.png, <stem>_ECD.png', 'Spectrum of each file, next to it (or --out-dir)',
                when='--uv/--ecd'),
         Output('plot', '<prefix>_UV_superimposed.png', 'All files on one plot, only with 2 or more files; '
@@ -827,6 +895,14 @@ class TddftParser(CLICommand, name='frog-tddft'):
             "`--dct-states` in a bottom row.",
             "Restrict the SOC matrix to the states you care about with `--soc-states S0 S1 T1 T2` "
             "(ranges like `T1-T5` work).",
+            "Transition diagram: `--transition-diagram` writes `<stem>_transitions.png` (`--fig-format svg` for a "
+            "vector figure) with the orbital levels of the 6 lowest states (or `--diagram-states S1-S3 T1`) and one "
+            "arrow per transition with weight ≥ `--diagram-weight` (0.10). `--diagram-labels 'a51=π*(C=S),b48=n(S)'` "
+            "adds your own text to levels (0-based, a/b = α/β).",
+            "State character (needs the MO coefficients, as `--dct`): `--diagram-pick npi pipi` finds the lowest "
+            "n→π* and π→π* states by itself; `--frag 1,5,8-10 2,3-4,11-15` gives two fragments (0-based atoms) and "
+            "`--diagram-pick ct` the lowest charge-transfer state between them. The `State Character` table lists "
+            "every state; with `--diagram-pick` and no `--diagram-states` the diagram shows only the picked states.",
         ],
         expect="""
             **Excited States Summary**: one row per state with its label, multiplicity, **Energy (eV)**,
@@ -861,6 +937,21 @@ class TddftParser(CLICommand, name='frog-tddft'):
               lobe (density gained, for Δρ), red the negative one; a caption lists the states and their
               transitions. Any number of orbitals works, 3 per row; above 12 the command warns that the
               picture gets crowded.
+            * **Transition diagram**: levels ordered by energy (spacing schematic, energies printed), empty above
+              the dashed line, occupied below; ↑↓ electrons (open shell: α ↑ in the left column, β ↓ in the right
+              one, an open circle marks the empty β partner of a singly occupied α orbital, SOMO). Each arrow is one
+              transition: colour = state, width ∝ weight (ORCA: the weight it prints, already
+              normalised; Gaussian: 2c² closed shell, c² open shell), dashed = dark state
+              (f < `--diagram-fmin`). Level labels: 0-based index, H/L name, type, % on the fragments, energy.
+            * **Orbital type** (from the MO coefficients, C² analysis as frog-mo): **π/π\\*** when ≥ 60% of the MO
+              is in p functions perpendicular to the local plane of unsaturated atoms (sp2/sp C, N, B; carbonyl O/S;
+              lone-pair N/O/S conjugated with them), **n** for an occupied MO with < 40% π and ≥ 40% on one
+              heteroatom (N, O, S, P, halogens), otherwise σ/σ\\*. The local plane is that of each atom and its
+              bonded neighbours, so twisted molecules work; strongly pyramidal or cumulated (allene, alkyne)
+              systems are less reliable. **State character** = share of the transition weights going n→π\\*,
+              π→π\\*, and with two fragments A→B (Σ w·p_A(donor)·p_B(acceptor)), B→A, A loc, B loc. Type: CT
+              A→B / B→A if that share is ≥ 0.5, else n→π\\* or π→π\\* if ≥ 0.5, else *mixed*. Checked on
+              formaldehyde (S1 n→π\\*, bright π→π\\* higher up) and on a benzene–TCNE complex (S1/S2 CT benzene→TCNE).
             * An output whose TD-DFT part did not finish has no states: no table is printed (the UV/ECD
               plots are then empty). Check that the job ended normally.
 
@@ -878,6 +969,10 @@ class TddftParser(CLICommand, name='frog-tddft'):
          'Charge-transfer distance of S1-S3 and T1, cubes and ChimeraX script in dct/'),
         ('frog-tddft tddft.out --orbital-grid --dct --dct-states S1 S2 --voxels 60',
          'Orbital multicube, Δρ of S1 and S2, and <stem>_grid.py to open in ChimeraX'),
+        ('frog-tddft td.log --transition-diagram --diagram-pick npi pipi --fig-format svg',
+         'Diagram of the lowest n→π* and π→π* states, as SVG'),
+        ('frog-tddft td.out --transition-diagram --frag 1,5,8-10 2,3-4,11-15 --diagram-pick ct',
+         'Charge transfer between two fragments: State Character table and the lowest CT state'),
     ]
 
     def setup_args(self, parser):
@@ -943,6 +1038,26 @@ class TddftParser(CLICommand, name='frog-tddft'):
                           help='Isovalue of the difference densities (a.u.)')
         grid.add_argument('--yes', action='store_true',
                           help='Do not ask before writing the grid (it asks only in an interactive terminal)')
+
+        diag = parser.add_argument_group('transition diagram and state character')
+        diag.add_argument('--transition-diagram', action='store_true',
+                          help='Draw the orbital levels and transitions of the chosen states (<stem>_transitions)')
+        diag.add_argument('--diagram-states', nargs='+', default=None, metavar='STATE',
+                          help='States of the diagram (e.g. S1-S3 T1); default: the 6 lowest in energy, '
+                               'or only the --diagram-pick ones when that is given')
+        diag.add_argument('--diagram-pick', nargs='+', choices=['npi', 'pipi', 'ct'], default=None,
+                          help='Add the lowest n→π*, π→π* or charge-transfer (between the --frag fragments) '
+                               'state; needs the MO coefficients')
+        diag.add_argument('--frag', nargs='+', default=None, metavar='ATOMS',
+                          help='One or two fragments as 0-based atoms (e.g. 1,5,8-10 2,3-4,11-15): %% of each '
+                               'orbital on them and, with two, the charge transfer A→B / B→A of each state')
+        diag.add_argument('--diagram-weight', type=float, default=0.10,
+                          help='Minimum weight of a transition to draw its arrow')
+        diag.add_argument('--diagram-fmin', type=float, default=0.01,
+                          help='Oscillator strength below which a state is drawn dashed (dark)')
+        diag.add_argument('--diagram-labels', default='', metavar='SPEC',
+                          help="Own text on levels, 0-based: 'a51=pi*(C=S),b48=n(S),50=pi' "
+                               '(a/b = alpha/beta, bare index = closed shell or both spins)')
 
         self.add_output_arg(parser, default='spectra', metavar='PREFIX',
                             help='Prefix of the aggregate spectra (superimposed, ensemble average), '
@@ -1067,6 +1182,8 @@ class TddftParser(CLICommand, name='frog-tddft'):
                 self._write_chimerax(item['path'], dct_commands, [c['path'] for c in dct_cubes])
             if args.orbital_grid:
                 process_orbital_grid(calc, file_path, args, self, dct_cubes)
+            if args.transition_diagram or args.frag or args.diagram_pick:
+                process_transition_diagram(calc, file_path, item['path'], args, self)
 
             for flag, name, key in _SPECTRA:
                 if getattr(args, flag):

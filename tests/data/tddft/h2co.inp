@@ -1,0 +1,8 @@
+! B3LYP def2-SVP TightSCF PrintBasis PrintMOs
+%tddft nroots 8 tda true end
+* xyz 0 1
+C  0.000  0.000  0.000
+O  0.000  0.000  1.205
+H  0.000  0.943 -0.587
+H  0.000 -0.943 -0.587
+*
