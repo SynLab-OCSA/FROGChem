@@ -250,11 +250,28 @@ def parse_gaussian_cube(filename):
             'coords': np.array([float(x) for x in line[2:5]])
         })
     
-    # Volumetric data
+    # Multicube: negative natoms, then the orbital-id record "N id1 ... idN" (may wrap over lines)
+    orbital_ids = None
     data_start = 6 + abs(natoms)
+    if natoms < 0:
+        first = lines[data_start].split()
+        k = int(first[0])
+        ids = first[1:]
+        data_start += 1
+        while len(ids) < k:
+            ids += lines[data_start].split()
+            data_start += 1
+        orbital_ids = [int(i) for i in ids[:k]]
+
+    # Volumetric data
     # ponytail: fast C-buffer stream conversion with np.fromstring avoids millions of Python float allocations
     data_text = " ".join(lines[data_start:])
-    data = np.fromstring(data_text, sep=' ', dtype=float).reshape(nx, ny, nz)
+    values = np.fromstring(data_text, sep=' ', dtype=float)
+    if orbital_ids is None:
+        data = values.reshape(nx, ny, nz)
+    else:
+        # one block per grid point: the N orbital values are contiguous (orbital index fastest)
+        data = values.reshape(nx, ny, nz, len(orbital_ids))
     
     return {
         'title': title,
@@ -266,7 +283,8 @@ def parse_gaussian_cube(filename):
         'units': units,
         'atoms': atoms,
         'data': data,
-        'data_range': (data.min(), data.max())
+        'data_range': (data.min(), data.max()),
+        'orbital_ids': orbital_ids,
     }
 
 
@@ -286,7 +304,10 @@ def write_gaussian_cube(filename, cube_data):
         f.write(f"{cube_data['comment']}\n")
         
         # Number of atoms and origin
+        orbital_ids = cube_data.get('orbital_ids')
         natoms = cube_data['natoms']
+        if orbital_ids is not None:
+            natoms = -abs(natoms)  # negative natoms announces the orbital-id record
         origin = cube_data['origin']
         f.write(f"{natoms:5d}{origin[0]:12.6f}{origin[1]:12.6f}{origin[2]:12.6f}\n")
         
@@ -309,25 +330,38 @@ def write_gaussian_cube(filename, cube_data):
             coords = atom['coords']
             f.write(f"{atomic_num:5d}{charge:12.6f}{coords[0]:12.6f}{coords[1]:12.6f}{coords[2]:12.6f}\n")
         
-        # Volumetric data (6 values per line)
-        data = cube_data['data']
-        values_per_line = 6
-        count = 0
-        
-        for i in range(nx):
-            for j in range(ny):
-                for k in range(nz):
-                    f.write(f"{data[i,j,k]:13.5E}")
-                    count += 1
-                    
-                    if count % values_per_line == 0:
-                        f.write("\n")
-                    else:
-                        f.write(" ")
-        
-        # Final newline if needed
-        if count % values_per_line != 0:
-            f.write("\n")
+        # Multicube: orbital-id record after the atoms, Gaussian format 10I5: the count and the
+        # 1-based MO numbers, 10 fields per line (count + 9 ids on the first line)
+        if orbital_ids is not None:
+            fields = [len(orbital_ids)] + [int(i) for i in orbital_ids]
+            for start in range(0, len(fields), 10):
+                f.write("".join(f"{v:5d}" for v in fields[start:start + 10]) + "\n")
+
+        # Volumetric data: x, y, z order, orbital index fastest, 6 values per line
+        _write_cube_values(f, np.asarray(cube_data['data'], dtype=float).reshape(-1))
+
+
+def _write_cube_values(f, flat, per_line=6):
+    """Write a flat array of cube values, per_line values per line in %13.5E format."""
+    n_full = len(flat) - len(flat) % per_line
+    if n_full:
+        body = flat[:n_full].reshape(-1, per_line)
+        f.write("\n".join("".join(f"{v:13.5E}" for v in row) for row in body) + "\n")
+    rest = flat[n_full:]
+    if len(rest):
+        f.write("".join(f"{v:13.5E}" for v in rest) + "\n")
+
+
+def cube_component(cube_data, k):
+    """One orbital of a multicube (or the cube itself) as an ordinary single-volume cube dict."""
+    out = dict(cube_data)
+    data = np.asarray(cube_data['data'])
+    comp = data[..., k] if cube_data.get('orbital_ids') is not None else data
+    out['data'] = np.ascontiguousarray(comp)
+    out['data_range'] = (out['data'].min(), out['data'].max())
+    out['orbital_ids'] = None
+    out['natoms'] = abs(cube_data['natoms'])
+    return out
 
 
 
