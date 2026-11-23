@@ -146,7 +146,7 @@ class Calculation(BaseParser):
 
             commands = r' '.join(re.findall(r'!([\S\s]*?)\n', raw_input)).lower().split()
             re_blocks = rf"%\s*({'|'.join(self.reg['blocks'])})\b([^%]*?)end\b"
-            self.blocks = re.findall(re_blocks, self.input.replace('\r\n', '\n'))
+            self.blocks = re.findall(re_blocks, self.input.replace('\r\n', '\n'), flags=re.IGNORECASE)
             for block_name, _ in self.blocks:
                 setattr(self, block_name.strip().lower(), True)
 

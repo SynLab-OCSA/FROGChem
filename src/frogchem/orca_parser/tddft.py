@@ -19,6 +19,14 @@ class Transition(tuple):
         return super().__getitem__(item)
 
 
+def _last_match(pattern, text):
+    """Last match of pattern in text (a job with several TD-DFT blocks: the last one is the final result)."""
+    found = None
+    for found in re.finditer(pattern, text):
+        pass
+    return found
+
+
 def parse_tddft_states(fl, reg) -> dict:
     states = defaultdict(lambda: defaultdict(dict))
 
@@ -28,11 +36,11 @@ def parse_tddft_states(fl, reg) -> dict:
     spectra_re = re.compile(r'TD-DFT(?:/TDA)?-EXCITATION SPECTRA')
     soc_re = re.compile(r'TD-DFT(?:/TDA)? SPIN-ORBIT COUPLING')
 
-    s_match = singlets_re.search(fl)
-    t_match = triplets_re.search(fl)
-    o_match = open_shell_re.search(fl)
-    spec_match = spectra_re.search(fl)
-    soc_match = soc_re.search(fl)
+    s_match = _last_match(singlets_re, fl)
+    t_match = _last_match(triplets_re, fl)
+    o_match = _last_match(open_shell_re, fl)
+    spec_match = _last_match(spectra_re, fl)
+    soc_match = _last_match(soc_re, fl)
 
     singlets_part = ""
     if s_match:
@@ -90,7 +98,7 @@ def parse_tddft_states(fl, reg) -> dict:
         if trans_match and current_state is not None:
             orb_from_raw, orb_to_raw, weight = trans_match.groups()
             spin = ''
-            if open_shell_part or 'b' in f_.lower():
+            if open_shell_part:  # unrestricted output only: closed-shell labels also end in 'a'
                 if 'b' in orb_from_raw.lower():
                     spin = 'b'
                 elif 'a' in orb_from_raw.lower():
@@ -101,6 +109,7 @@ def parse_tddft_states(fl, reg) -> dict:
                 orb_to = int(re.sub(r'\D', '', orb_to_raw))
             except (ValueError, AttributeError) as e:
                 logger.warning("Could not parse orbital indices: %s", e)
+                continue  # never append a transition with stale or undefined indices
 
             states[current_mult][current_state]["population"].append(
                 Transition(orb_from, orb_to, float(weight), spin)
@@ -152,12 +161,12 @@ def get_tddft_soc(fl, reg, tddft_states):
 
 def parse_tddft_fosc(fl, tddft_states):
     # Match the uncorrected TD-DFT absorption spectrum (prefer non-SOC CORRECTED)
-    abs_match = re.search(
+    abs_match = _last_match(
         r"(?<!SOC CORRECTED )ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS",
         fl
     )
     if not abs_match:
-        abs_match = re.search(
+        abs_match = _last_match(
             r"ABSORPTION SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS",
             fl
         )
@@ -175,12 +184,12 @@ def parse_tddft_fosc(fl, tddft_states):
                 tddft_states[s_mult][s_state]["fosc"] = float(fosc)
 
     # Match the uncorrected TD-DFT CD spectrum (prefer non-SOC CORRECTED)
-    cd_match = re.search(
+    cd_match = _last_match(
         r"(?<!SOC CORRECTED )CD SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS",
         fl
     )
     if not cd_match:
-        cd_match = re.search(
+        cd_match = _last_match(
             r"CD SPECTRUM VIA TRANSITION ELECTRIC DIPOLE MOMENTS",
             fl
         )
