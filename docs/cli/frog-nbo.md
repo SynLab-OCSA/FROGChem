@@ -70,8 +70,8 @@ Numbering: atom indices (`-i`) are **0-based** (first atom = 0), while the label
 | `--cube` `N …` |  | Write cube files of these NBOs (1-based NBO numbers) |
 | `--cube-e2` `[K]` |  | Write cube files of the donor and acceptor NBOs of the K strongest E(2) interactions (K = 3 if omitted) |
 | `--coeff-file` `PATH` |  | NBO coefficient file (.37, from the NBO PLOT keyword); auto-detected next to the input if omitted |
-| `--spacing` `SPACING` | `0.15` | Grid spacing in Å |
-| `--voxels` `VOXELS` |  | Number of grid points per axis (overrides --spacing) |
+| `--spacing` `SPACING` | `0.15` | Grid spacing in Å (instead of --voxels) |
+| `--voxels` `N …` |  | Grid points: N on every axis, or NX NY NZ (instead of --spacing) |
 | `--padding` `PADDING` | `5.0` | Box padding around the molecule in Å |
 
 **Thresholds**
@@ -168,7 +168,7 @@ usage: frog-nbo [-h] [-v] [-q] [--format {table,json,csv}] [--table-file PATH] [
                 [--summary] [--npa] [--analysis] [--e2] [--wiberg] [--bonds] [--lp]
                 [--cycle CYCLE] [-i INDICES [INDICES ...]] [--dtype DTYPE] [--atype ATYPE]
                 [-t THRESHOLD] [--cube N [N ...]] [--cube-e2 [K]] [--coeff-file PATH]
-                [--spacing SPACING] [--voxels VOXELS] [--padding PADDING] [--out-dir DIR]
+                [--spacing SPACING] [--voxels N [N ...]] [--padding PADDING] [--out-dir DIR]
                 file [file ...]
 
 Extract Natural Bond Orbital (NBO) data from ORCA output (! NBO).
@@ -193,7 +193,7 @@ options:
   --lp                          Show lone pair orbitals (LP) of the selected atom (first of -i)
   --cycle CYCLE                 NBO cycle to inspect (-1 = last/converged, 0 = first) (default:
                                 -1)
-  -i INDICES [INDICES ...], --indices INDICES [INDICES ...]
+  -i, --indices INDICES [INDICES ...]
                                 Keep only results involving any of these atoms (0-based)
   --dtype DTYPE                 Filter E(2) by donor type (e.g. LP, BD)
   --atype ATYPE                 Filter E(2) by acceptor type (e.g. BD*, RY)
@@ -202,22 +202,21 @@ options:
                                 E(2) interactions (K = 3 if omitted)
   --coeff-file PATH             NBO coefficient file (.37, from the NBO PLOT keyword); auto-
                                 detected next to the input if omitted
-  --spacing SPACING             Grid spacing in Å (default: 0.15)
-  --voxels VOXELS               Number of grid points per axis (overrides --spacing)
+  --spacing SPACING             Grid spacing in Å (instead of --voxels) (default: 0.15)
+  --voxels N [N ...]            Grid points: N on every axis, or NX NY NZ (instead of --spacing)
   --padding PADDING             Box padding around the molecule in Å (default: 5.0)
 
 thresholds:
-  -t THRESHOLD, --threshold THRESHOLD
-                                E(2) threshold in kcal/mol (default: 2.0)
+  -t, --threshold THRESHOLD     E(2) threshold in kcal/mol (default: 2.0)
 
 ensemble averaging:
-  -c PATH, --checkpoint PATH    Checkpoint file (checkpoint.json, or csv/json) with Boltzmann
+  -c, --checkpoint PATH         Checkpoint file (checkpoint.json, or csv/json) with Boltzmann
                                 populations for ensemble averaging
   --read-boltzmann PROTOCOL     Protocol whose populations are read from the checkpoint (default:
                                 protocol of each file, or the latest)
-  -e {E,EZPVE,H,G}, --energy-term {E,EZPVE,H,G}
+  -e, --energy-term {E,EZPVE,H,G}
                                 Energy used for on-the-fly Boltzmann weights (default: G)
-  -T TEMP, --temp TEMP          Temperature in K (default: 298.15)
+  -T, --temp TEMP               Temperature in K (default: 298.15)
   --individual                  Also show per-conformer results next to the ensemble average
 
 output:

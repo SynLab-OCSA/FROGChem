@@ -1,6 +1,6 @@
 intro: |
   Solvent surfaces of a single water molecule. The grid is coarsened to 0.2 Å to keep the cubes small
-  (the default 0.1 Å gives about 28 MB per cube).
+  (the default 0.1 Å gives about 27 MB per cube).
 data:
   - path: files/water.xyz
     about: H₂O geometry (XYZ)

@@ -43,8 +43,8 @@ Avogadro, GaussView) is needed to look at the result.
 |---|---|---|
 | `--sas-only` |  | Generate only the SAS cube |
 | `--ses-only` |  | Generate only the SES cube |
-| `--spacing` `SPACING` | `0.1` | Grid spacing in Å |
-| `--voxels` `VOXELS` |  | Number of grid points per axis (overrides --spacing) |
+| `--spacing` `SPACING` | `0.1` | Grid spacing in Å (instead of --voxels) |
+| `--voxels` `N …` |  | Grid points: N on every axis, or NX NY NZ (instead of --spacing) |
 | `--padding` `PADDING` | `3.0` | Box padding around the molecule in Å |
 | `--probe-radius` `PROBE_RADIUS` | `1.4` | Solvent probe radius in Å |
 | `--vdw-offset` `VDW_OFFSET` | `0.0` | Offset added to the Bondi vdW radius, in Å |
@@ -73,12 +73,12 @@ A *Solvent Surface Summary* table with the paths of the written cubes; with the 
 * The cube values are a **signed distance in Å** from the surface: negative inside, positive outside,
   zero on the surface; so the isovalue to draw is always 0.0 (not a density isovalue).
 * The SAS is much larger than the SES: it lies one probe radius further out. SAS volume ≫ SES volume.
-* Cubes are big at the default 0.1 Å spacing: about 28 MB per cube even for water; for large
+* Cubes are big at the default 0.1 Å spacing: about 27 MB per cube even for water; for large
   molecules use `--spacing 0.2` or `--voxels 100` for a preview. A coarse grid makes the SES slightly
   bumpy and its volume less accurate.
 
 Example (`water.xyz`, defaults): 135×126×120 grid; SAS volume 124.50 Å³, SES volume 19.85 Å³,
-two cubes of 28.6 MB each.
+two cubes of 26.9 MB each.
 
 ## Step by step
 
@@ -97,10 +97,9 @@ Every option, as printed by `frog-solvent --help`:
 
 :::{dropdown} `frog-solvent --help`
 ```text
-usage: frog-solvent [-h] [-v] [-q] [--format {table,json,csv}] [--table-file PATH]
-                    [--sas-only | --ses-only] [--spacing SPACING] [--voxels VOXELS]
-                    [--padding PADDING] [--probe-radius PROBE_RADIUS] [--vdw-offset VDW_OFFSET]
-                    [--out-dir DIR]
+usage: frog-solvent [-h] [-v] [-q] [--format {table,json,csv}] [--table-file PATH] [--sas-only |
+                    --ses-only] [--spacing SPACING] [--voxels N [N ...]] [--padding PADDING]
+                    [--probe-radius PROBE_RADIUS] [--vdw-offset VDW_OFFSET] [--out-dir DIR]
                     input [input ...]
 
 Compute solvent accessible (SAS) and solvent excluded (SES) surfaces as cube files.
@@ -115,8 +114,8 @@ options:
   -h, --help                   show this help message and exit
   --sas-only                   Generate only the SAS cube
   --ses-only                   Generate only the SES cube
-  --spacing SPACING            Grid spacing in Å (default: 0.1)
-  --voxels VOXELS              Number of grid points per axis (overrides --spacing)
+  --spacing SPACING            Grid spacing in Å (instead of --voxels) (default: 0.1)
+  --voxels N [N ...]           Grid points: N on every axis, or NX NY NZ (instead of --spacing)
   --padding PADDING            Box padding around the molecule in Å (default: 3.0)
   --probe-radius PROBE_RADIUS  Solvent probe radius in Å (default: 1.4)
   --vdw-offset VDW_OFFSET      Offset added to the Bondi vdW radius, in Å (default: 0.0)

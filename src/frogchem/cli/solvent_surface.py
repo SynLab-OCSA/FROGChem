@@ -58,12 +58,12 @@ class SolventSurface(CLICommand, name='frog-solvent'):
             * The cube values are a **signed distance in Å** from the surface: negative inside, positive outside,
               zero on the surface; so the isovalue to draw is always 0.0 (not a density isovalue).
             * The SAS is much larger than the SES: it lies one probe radius further out. SAS volume ≫ SES volume.
-            * Cubes are big at the default 0.1 Å spacing: about 28 MB per cube even for water; for large
+            * Cubes are big at the default 0.1 Å spacing: about 27 MB per cube even for water; for large
               molecules use `--spacing 0.2` or `--voxels 100` for a preview. A coarse grid makes the SES slightly
               bumpy and its volume less accurate.
 
             Example (`water.xyz`, defaults): 135×126×120 grid; SAS volume 124.50 Å³, SES volume 19.85 Å³,
-            two cubes of 28.6 MB each.
+            two cubes of 26.9 MB each.
             """,
     )
     examples = [

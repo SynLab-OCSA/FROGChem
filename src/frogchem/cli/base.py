@@ -139,6 +139,43 @@ class HelpFormatter(argparse.RawDescriptionHelpFormatter):
         return f"{help_text} (default: %(default)s)"
 
 
+_GRID_EXCLUSIVE = '--spacing and --voxels are alternatives: give only one of them'
+
+
+class _VoxelsAction(argparse.Action):
+    """--voxels N (int for every axis) or --voxels NX NY NZ (tuple, one count per axis).
+
+    Cannot be combined with an explicit --spacing (checked whichever comes first).
+    """
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if getattr(namespace, '_spacing_set', False):
+            parser.error(_GRID_EXCLUSIVE)
+        try:
+            vals = [int(v) for v in values]
+        except ValueError:
+            parser.error(f"{option_string} takes 1 or 3 integers")
+        if len(vals) == 1:
+            setattr(namespace, self.dest, vals[0])
+        elif len(vals) == 3:
+            setattr(namespace, self.dest, tuple(vals))
+        else:
+            parser.error(f"{option_string} takes 1 or 3 integers")
+        namespace._voxels_set = True
+
+
+class _SpacingAction(argparse.Action):
+    """--spacing Å; records that it was given explicitly (see _VoxelsAction)."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if getattr(namespace, '_voxels_set', False):
+            parser.error(_GRID_EXCLUSIVE)
+        setattr(namespace, self.dest, values)
+        namespace._spacing_set = True
+        if hasattr(namespace, 'voxels'):
+            namespace.voxels = None  # an explicit spacing replaces a default voxel count
+
+
 class CLICommand:
     """Base class for CLI tools. Subclasses auto-register via __init_subclass__."""
 
@@ -237,11 +274,18 @@ class CLICommand:
         return parser.add_argument('-f', '--force', action='store_true', help=help)
 
     @staticmethod
-    def add_grid_args(parser, spacing: float, padding: float) -> None:
-        """Cube grid options shared by every command that writes .cube files."""
-        parser.add_argument('--spacing', type=float, default=spacing, help='Grid spacing in Å')
-        parser.add_argument('--voxels', type=int, default=None,
-                            help='Number of grid points per axis (overrides --spacing)')
+    def add_grid_args(parser, spacing: float, padding: float, voxels: Optional[int] = None) -> None:
+        """Cube grid options shared by every command that writes .cube files.
+
+        --voxels N sets N points on every axis, --voxels NX NY NZ one count per axis; it
+        overrides --spacing. ``voxels`` is the default voxel count when it is not given.
+        """
+        # with a default voxel count the default spacing would never be used: do not show one
+        parser.add_argument('--spacing', type=float, default=spacing if voxels is None else None,
+                            action=_SpacingAction, help='Grid spacing in Å (instead of --voxels)')
+        parser.add_argument('--voxels', nargs='+', action=_VoxelsAction, default=voxels,
+                            metavar='N',
+                            help='Grid points: N on every axis, or NX NY NZ (instead of --spacing)')
         parser.add_argument('--padding', type=float, default=padding,
                             help='Box padding around the molecule in Å')
 
