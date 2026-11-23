@@ -87,6 +87,9 @@ def integrate_density_voronoi(cube_data: Dict[str, Any]) -> np.ndarray:
     # Sum density for each atom index and multiply by the voxel volume |vx·(vy×vz)|,
     # so that the result is ∫ρ dV (e.g. electrons or unpaired spins), not a raw voxel sum.
     voxel_volume = abs(np.linalg.det(np.asarray(voxel_vectors, dtype=float)))
+    if cube_data.get('units', 'Bohr') == 'Angstrom':
+        # density values are in e/bohr^3 whatever the coordinate unit: express the volume in bohr^3
+        voxel_volume /= 0.52917721067 ** 3
     atom_integrals = np.bincount(nearest_atom_indices, weights=flat_density, minlength=n_atoms)
 
     return atom_integrals * voxel_volume
