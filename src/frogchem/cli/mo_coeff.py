@@ -29,6 +29,8 @@ def _open_shell(calc) -> bool:
 
 
 def get_homo_index(calc, beta=False):
+    if beta and _open_shell(calc) and getattr(calc, 'beta_homo', None) is not None:
+        return calc.beta_homo
     if getattr(calc, 'homo', None) is not None:
         return calc.homo
     if _open_shell(calc):
