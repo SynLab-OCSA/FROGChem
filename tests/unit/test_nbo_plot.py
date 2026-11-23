@@ -51,8 +51,8 @@ def test_generate_visualization_scripts(tmp_path):
 
     cxc_content = cxc_file.read_text()
     assert "open nbo_1.cube" in cxc_content
-    assert "volume #1 level 0.0400" in cxc_content
-    assert "volume #1 level -0.0400" in cxc_content
+    # both lobes in one volume command (a second 'volume ... level' would replace the first)
+    assert "volume #1 style surface level -0.0400 color #ef4444 level 0.0400 color #3b82f6" in cxc_content
 
     pml_content = pml_file.read_text()
     assert "load nbo_1.cube, map_nbo_1" in pml_content

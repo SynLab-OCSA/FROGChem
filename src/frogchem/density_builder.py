@@ -282,13 +282,93 @@ def generate_grid(
     lo = geom.min(axis=0) - padding
     hi = geom.max(axis=0) + padding
     if n_voxels:
-        axes = [np.linspace(lo[j], hi[j], n_voxels) for j in range(3)]
+        nv = (n_voxels,) * 3 if np.isscalar(n_voxels) else tuple(n_voxels)
+        axes = [np.linspace(lo[j], hi[j], nv[j]) for j in range(3)]
     else:
         axes = [np.arange(lo[j], hi[j] + spacing, spacing) for j in range(3)]
     ax, ay, az = axes
     nx, ny, nz = len(ax), len(ay), len(az)
     grid_3d = np.stack(np.meshgrid(ax, ay, az, indexing='ij'), axis=-1)
     return grid_3d, (ax, ay, az), (nx, ny, nz)
+
+
+def _spin_coeffs(calc):
+    """(alpha, beta) coefficient matrices of an unrestricted calculation, else None."""
+    if is_open_shell(calc) and hasattr(calc, 'alpha_coeff') and hasattr(calc, 'beta_coeff'):
+        return calc.alpha_coeff, calc.beta_coeff
+    return None
+
+
+def compute_orbitals_on_points(calc, indices, points, basis_table, beta=False, chunk=20000):
+    """Values of the MOs ``indices`` (0-based) at ``points``, shape (n_points, len(indices)).
+
+    The basis is evaluated in blocks of points, so the full n_bf x n_points matrix is never held
+    in memory, and it is evaluated once for all the requested orbitals.
+    """
+    spins = _spin_coeffs(calc)
+    if spins is not None:
+        coeff = spins[1] if beta else spins[0]
+    else:
+        coeff = calc.orbital_coefficients
+    indices = list(indices)
+    if indices and max(indices) >= coeff.shape[1]:
+        raise ValueError(f"orbital {max(indices) + 1} out of range: only {coeff.shape[1]} MOs")
+    sel = coeff[:, indices]
+    out = np.empty((len(points), len(indices)), dtype=np.float64)
+    for start in range(0, len(points), chunk):
+        stop = min(start + chunk, len(points))
+        out[start:stop] = eval_all_basis(basis_table, points[start:stop]).T @ sel
+    return out
+
+
+def fix_orbital_phase(psi):
+    """Flip each MO so that its largest lobe is positive (sum of psi**3 > 0).
+
+    The sign of an MO is arbitrary; fixing it makes the +/- colours reproducible between runs
+    and between programs. It does not change densities or difference densities.
+    """
+    s = np.sign(np.sum(psi ** 3, axis=0))
+    s[s == 0] = 1.0
+    return psi * s
+
+
+def build_orbitals_cube(
+    calc,
+    indices,
+    output: str = 'orbitals.cube',
+    spacing: float = 0.15,
+    padding: float = 5.0,
+    n_voxels=None,
+    beta: bool = False,
+    fix_phase: bool = True,
+) -> List[int]:
+    """Write MOs ``indices`` (0-based) to one multicube file.
+
+    With one orbital the file is an ordinary single-volume cube. With several, the cube holds
+    them all, and its MO ids are 1-based (index + 1), the convention of cubegen and Gaussian.
+    The basis is evaluated once for all the orbitals. Returns the indices written.
+    """
+    indices = list(indices)
+    table, points, axes, (nx, ny, nz) = _grid_and_basis(calc, spacing, padding, n_voxels)
+    spin = ('beta' if beta else 'alpha') if _spin_coeffs(calc) is not None else 'closed-shell'
+    print_info(f'evaluating {len(indices)} orbital(s) ({spin}) on the grid...')
+    psi = compute_orbitals_on_points(calc, indices, points, table, beta=beta)
+    if fix_phase:
+        psi = fix_orbital_phase(psi)
+    print_info(f'range: [{psi.min():.6f}, {psi.max():.6f}]')
+
+    ids = ' '.join(str(i + 1) for i in indices)
+    cube = _make_cube_data(
+        psi[:, 0].reshape(nx, ny, nz), axes, calc,
+        title=f'Orbitals ({spin}) from {calc.fname}',
+        comment=f'Grid: {nx}x{ny}x{nz} voxels; MO ids (1-based): {ids}',
+    )
+    if len(indices) > 1:
+        cube['data'] = psi.reshape(nx, ny, nz, len(indices))
+        cube['orbital_ids'] = [i + 1 for i in indices]
+    write_gaussian_cube(filename=output, cube_data=cube)
+    logger.debug(f'wrote {output}')
+    return indices
 
 
 def _guess_atomic_number(el: str) -> int:
@@ -302,7 +382,10 @@ def _grid_and_basis(calc, spacing, padding, n_voxels):
     print_info(f'MOs: {calc.orbital_coefficients.shape[1]}')
     print_info(f'atoms: {len(calc.atoms)}')
 
-    grid_3d, axes, (nx, ny, nz) = generate_grid(geom_bohr, spacing * _AU, padding * _AU, n_voxels)
+    if not n_voxels and spacing is None:
+        raise ValueError('grid: give a spacing or a number of voxels')
+    spacing_bohr = spacing * _AU if spacing is not None else None
+    grid_3d, axes, (nx, ny, nz) = generate_grid(geom_bohr, spacing_bohr, padding * _AU, n_voxels)
     points = grid_3d.reshape(-1, 3)
     print_info(f'grid: {nx} x {ny} x {nz} = {len(points):,} points')
     return table, points, axes, (nx, ny, nz)
@@ -324,7 +407,7 @@ def _make_cube_data(data_3d: np.ndarray, axes, calc, title: str = '', comment: s
         coords = calc.geom[i] * _AU
         atoms_data.append({
             'atomic_number': z,
-            'charge': 0.0,
+            'charge': float(z),  # nuclear charge in the cube's atom record, as ORCA and cubegen write it
             'coords': coords
         })
 
@@ -405,34 +488,12 @@ def build_orbital_cube(
     output: str = 'orbital.cube',
     spacing: float = 0.15,
     padding: float = 5.0,
-    n_voxels: Optional[int] = None,
+    n_voxels=None,
     alpha: bool = True,
     beta: bool = False,
 ) -> None:
-    table, points, axes, (nx, ny, nz) = _grid_and_basis(calc, spacing, padding, n_voxels)
-    print_info(f'evaluating orbital {orbital_index}...')
-
-    bf = eval_all_basis(table, points)
-    
-    if is_open_shell(calc):
-        if beta and hasattr(calc, 'beta_coeff'):
-            coeff = calc.beta_coeff[:, orbital_index]
-            label = 'beta'
-        elif hasattr(calc, 'alpha_coeff'):
-            coeff = calc.alpha_coeff[:, orbital_index]
-            label = 'alpha'
-        else:
-            coeff = calc.orbital_coefficients[:, orbital_index]
-            label = 'open-shell'
-    else:
-        coeff = calc.orbital_coefficients[:, orbital_index]
-        label = 'closed-shell'
-        
-    mo = bf.T @ coeff
-
-    _finish_cube(output, mo.reshape(nx, ny, nz), axes, calc,
-                 f'Orbital {orbital_index} ({label}) from {calc.fname}',
-                 f'Grid: {nx}x{ny}x{nz} voxels')
+    """One MO as a cube file (see build_orbitals_cube). ``alpha`` is kept for compatibility."""
+    build_orbitals_cube(calc, [orbital_index], output, spacing, padding, n_voxels, beta=beta)
 
 
 def compute_difference_density_on_points(
@@ -484,10 +545,9 @@ def compute_difference_density_on_points(
         if weight < 1e-6:
             continue
 
-        if spin == 'b' and hasattr(calc, 'beta_coeff') and getattr(calc, 'mult', 1) != 1:
-            coeffs = calc.beta_coeff
-        elif hasattr(calc, 'alpha_coeff') and getattr(calc, 'mult', 1) != 1:
-            coeffs = calc.alpha_coeff
+        spins = _spin_coeffs(calc)
+        if spins is not None:
+            coeffs = spins[1] if spin == 'b' else spins[0]
         else:
             coeffs = mo_coeff
 
@@ -578,8 +638,9 @@ def generate_visualization_scripts(
     for idx, cf in enumerate(cube_files, start=1):
         rel_cf = Path(cf).name if Path(cf).parent.resolve() == out_dir.resolve() else str(cf)
         cxc_lines.append(f"open {rel_cf}")
-        cxc_lines.append(f"volume #{idx} level {isovalue:.4f} color #3b82f6 transparency 0.3")
-        cxc_lines.append(f"volume #{idx} level -{isovalue:.4f} color #ef4444 transparency 0.3")
+        # both lobes in one command: a second 'volume ... level' would replace the first surface
+        cxc_lines.append(f"volume #{idx} style surface level {-isovalue:.4f} color #ef4444 "
+                         f"level {isovalue:.4f} color #3b82f6 transparency 0.3")
     cxc_path.write_text('\n'.join(cxc_lines) + '\n', encoding='utf-8')
 
     # PyMOL script
