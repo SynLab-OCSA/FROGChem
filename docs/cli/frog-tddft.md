@@ -31,7 +31,7 @@ strengths for ECD are printed by ORCA automatically. For triplets add `triplets 
 (energies, f, R and transitions; with `td=(50-50,nstates=10)` singlets and triplets are numbered
 S1…, T1… as in ORCA; checked against ORCA `tda false` on (R)-methyloxirane).
 
-For `--dct` the output must also contain the basis set and all the MO coefficients: ORCA
+For `--dct` and `--orbital-grid` the output must also contain the basis set and all the MO coefficients: ORCA
 `! PrintBasis PrintMOs`; Gaussian `#p ... pop=full iop(3/33=1) iop(6/80=1) gfinput` (pure `5D 7F` or
 Cartesian `6D 10F` functions). Alternatively give an existing difference-density cube
 (`.cube`, e.g. written by an earlier `--dct` run) and it is analysed directly. For `-c` you need a
@@ -76,10 +76,23 @@ Cartesian `6D 10F` functions). Alternatively give an existing difference-density
 | `--dct-threshold` `DCT_THRESHOLD` | `100.0` | Density percentile kept when locating the Δρ centroids (100 = no trimming, as in the Le Bahers D_CT definition) |
 | `--ct-threshold` `CT_THRESHOLD` | `2.0` | Δr in Å above which a state is labelled charge transfer |
 | `--le-threshold` `LE_THRESHOLD` | `1.5` | Δr in Å below which a state is labelled local excitation |
-| `--voxels` `VOXELS` | `60` | Grid points per dimension for the DCT grid |
+| `--voxels` `N …` | `60` | Grid points: N on every axis, or NX NY NZ |
 | `--padding` `PADDING` | `3.0` | Grid padding around the molecule in Å |
 | `--no-save-cube` |  | Do not write the difference-density cube files |
 | `--chimerax` |  | Write the ChimeraX commands for the Δρ centroid spheres to <stem>_dct.cxc |
+
+**Orbital grid (ChimeraX)**
+
+| Argument | Default | Description |
+|---|---|---|
+| `--orbital-grid` |  | Write a multicube of the orbitals of the chosen states and a ChimeraX script (<stem>_grid.py) that lays them out; with --dct also the difference densities |
+| `--grid-states` `GRID_STATES …` |  | States for the grid (e.g. S1-S3 T1); default: the 4 lowest in energy |
+| `--grid-weight` `GRID_WEIGHT` | `0.1` | Minimum weight of a transition for its orbitals to enter the grid |
+| `--grid-frontier` `N` |  | Also HOMO-N ... HOMO and LUMO ... LUMO+N |
+| `--grid-orbitals` `I …` |  | 0-based orbital indices (e.g. 14-17 20), instead of the automatic choice |
+| `--grid-iso` `GRID_ISO` | `0.02` | Isovalue of the orbitals (a.u.) |
+| `--grid-dct-iso` `GRID_DCT_ISO` | `0.002` | Isovalue of the difference densities (a.u.) |
+| `--yes` |  | Do not ask before writing the grid (it asks only in an interactive terminal) |
 
 **Thresholds**
 
@@ -132,13 +145,16 @@ Shared by every command: `-v/--verbose`, `-q/--quiet`, `--format {table,json,csv
 |---|---|---|---|
 | Terminal | `Excited States Summary (<file>)` | always | One row per state: multiplicity, energy (eV), f, R (1e-40 cgs), <S²> and the orbital transitions with weight above -t |
 | Terminal | `Spin-Orbit Coupling (SOC) Matrix (<file>)` | always | SOC between singlets (rows) and triplets (columns), cm⁻¹; only for SOC calculations, filtered by --soc-states/--soc-singlets/--soc-triplets |
-| Terminal | `Charge Transfer Distance Analysis (<file>)` | `--dct` | Per state: energy, wavelength, f, Δr (Å) with CT/LE class, CT dipole q_CT·Δr (e·Å) |
+| Terminal | `Charge Transfer Distance Analysis (<file>)` | `--dct` | Per state: energy, wavelength, f, Δr (Å) with CT/LE class, CT dipole q_CT·Δr (e·Å), transferred charge q_CT (e) and sum of the transition weights Σw |
+| Terminal | `Orbitals of the grid (<file>)` | `--orbital-grid` | Index, cube id (index + 1), H/L label and energy (eV) of each orbital of the grid |
 | Terminal | `Charge Transfer Distance (CUBE)` | always | Δr (Å), CT dipole q_CT·Δr (e·Å) and grid size of each CUBE input |
 | Terminal | `Ensemble Weights (<n> conformers)` | `-c` | Conformer, protocol, file, Boltzmann population (%) and normalized weight (%) |
 | Terminal | `Ensemble-Averaged Excited States (Boltzmann Weighted)` | `-c` | Weighted energy, f, R and <S²> per state, transitions of the most populated conformer |
 | Terminal | `Ensemble-Averaged Spin-Orbit Coupling (SOC) Matrix (Boltzmann Weighted)` | `-c` | Weighted SOC matrix (cm⁻¹) |
 | File | `<stem>_<state>_delta_rho.cube` | `--dct` | Difference density of each state (not with --no-save-cube) |
-| File | `<stem>_dct.cxc` | `--chimerax` | ChimeraX script with the +/− centroid spheres of Δρ (blue/red), for --dct or CUBE inputs |
+| File | `<stem>_dct.cxc` | `--chimerax` | ChimeraX script: opens the Δρ cubes (blue +, red −) and the +/− centroid spheres, for --dct or CUBE inputs |
+| File | `<stem>_orbitals.cube` | `--orbital-grid` | Multicube of the orbitals of the chosen states (cube ids 1-based = index + 1) |
+| File | `<stem>_grid.py` | `--orbital-grid` | ChimeraX script that lays out the orbitals (virtual on top, occupied below) and the Δρ of the states: open it in ChimeraX |
 | File | `<plot>.csv` | `--save-spectra` | Normalized curves of every saved spectrum plot, same name: Energy_eV, Wavelength_nm, one column per curve |
 | File | `<plot>.pickle` | `--save-pickle` | Pickled matplotlib figure of every saved spectrum plot |
 | Plot | `<stem>_UV.png, <stem>_ECD.png` | `--uv/--ecd` | Spectrum of each file, next to it (or --out-dir) |
@@ -148,7 +164,8 @@ Shared by every command: `-v/--verbose`, `-q/--quiet`, `--format {table,json,csv
 ### How to read it
 
 **Excited States Summary**: one row per state with its label, multiplicity, **Energy (eV)**,
-**f** (dimensionless), **R** (rotatory strength, 10⁻⁴⁰ cgs), **<S\*\*2>** and the orbital
+**f** (dimensionless), **R** (rotatory strength, 10⁻⁴⁰ cgs, length gauge for both ORCA and
+Gaussian: Gaussian's `R(length)` column, not `R(velocity)`), **<S\*\*2>** and the orbital
 transitions with their weight, e.g. `H->L (0.99)` (H = HOMO, L = LUMO, H-1 = HOMO−1; α/β marks the
 spin in open-shell runs). States are labelled per multiplicity: **S1, S2… T1, T2… D1… Q1…**
 (S0 is the ground state), and the same labels are used in the SOC matrix and in `--dct-states`.
@@ -168,6 +185,16 @@ To convert: λ (nm) = 1239.84 / E (eV).
   (*Charge Trans.*), in between *Mixed CT/LE* (change with `--le-threshold`/`--ct-threshold`). The
   *Dipole Moment* column is q_CT·Δr in e·Å. A grid that is too coarse or a too small `--padding`
   makes Δr noisy: compare states computed with the same grid.
+* **q_CT** (e) is the charge that moves: the integral of the positive part of Δρ (equal to the
+  negative part). **Σw** is the sum of the weights of the transitions printed by ORCA/Gaussian, the
+  only ones Δρ is built from; Δρ is divided by Σw, so a value well below 1 means that many small
+  transitions are missing and q_CT is less reliable. Δr does not depend on this scaling.
+* **Orbital grid** (`--orbital-grid`): a table of the orbitals (index, cube id = index + 1, H/L
+  label, energy) and, in ChimeraX, one copy of the molecule per orbital: virtual orbitals on top
+  (LUMO first), occupied below (HOMO first), Δρ of the states at the bottom. Blue is the positive
+  lobe (density gained, for Δρ), red the negative one; a caption lists the states and their
+  transitions. Any number of orbitals works, 3 per row; above 12 the command warns that the
+  picture gets crowded.
 * An output whose TD-DFT part did not finish has no states: no table is printed (the UV/ECD
   plots are then empty). Check that the job ended normally.
 
@@ -181,8 +208,9 @@ f 0.080, R 20.696, `H->L (0.99)`; T1 2.506 eV, <S\*\*2> 2.000; SOC S0–T1 6.857
 1. Run `frog-tddft job.out` to print the excited-state table (and the SOC matrix if the job had `dosoc true`); lower `-t` (default 0.20) to see more orbital transitions per state, `--raw-orbitals` to see MO numbers instead of H/L labels.
 2. Plot spectra with `--uv` and/or `--ecd`: the files `<stem>_UV.png` / `<stem>_ECD.png` go next to the output (or `--out-dir`). Adjust the band width with `--fwhm` (eV, default 0.3), shift all energies with `--shift` (eV, e.g. −0.2 to match experiment), set the window with `--x-start`/`--x-end` (eV, default 2–8 eV = 620–155 nm), and add `--save-spectra` to get the curves as CSV.
 3. Several files (e.g. functionals, or conformers) → one plot each plus a superimposed plot `spectra_UV_superimposed.png` (prefix from `-o`); with `-c checkpoint.json` the states and the spectrum are Boltzmann-averaged (`spectra_UV_ensemble.png`).
-4. Charge-transfer analysis: `--dct` for all states, or `--dct --dct-states S1-S3 T1` for some of them, with the same labels as the table; `--voxels` (default 60) sets the grid, `--chimerax` writes a ChimeraX script with the +/− centroids, `--no-save-cube` skips the Δρ cube files.
-5. Restrict the SOC matrix to the states you care about with `--soc-states S0 S1 T1 T2` (ranges like `T1-T5` work).
+4. Charge-transfer analysis: `--dct` for all states, or `--dct --dct-states S1-S3 T1` for some of them, with the same labels as the table; `--voxels` sets the grid (60 points per axis by default, or `--voxels NX NY NZ`), `--chimerax` writes a ChimeraX script that opens the Δρ cubes and draws the +/− centroids, `--no-save-cube` skips the Δρ cube files (they are still written when `--chimerax` or `--orbital-grid` need them).
+5. Orbital figure: `--orbital-grid` writes `<stem>_orbitals.cube` (one multicube) and `<stem>_grid.py`; open the script in ChimeraX (`open job_grid.py`, kept next to the cubes). The orbitals are those of the transitions with weight ≥ `--grid-weight` (0.10) in the states of `--grid-states` (default: the 4 lowest), plus HOMO−N … LUMO+N with `--grid-frontier N`; `--grid-orbitals 14-17 20` gives them by hand instead. In a terminal the command lists them and asks before writing (Enter = write, `n` = cancel, or type other indices); `--yes` skips the question. Add `--dct` to show the Δρ of the `--dct-states` in a bottom row.
+6. Restrict the SOC matrix to the states you care about with `--soc-states S0 S1 T1 T2` (ranges like `T1-T5` work).
 
 ## Real example
 
@@ -203,8 +231,11 @@ usage: frog-tddft [-h] [-v] [-q] [--format {table,json,csv}] [--table-file PATH]
                   [--fwhm FWHM] [--x-start X_START] [--x-end X_END] [--save-spectra]
                   [--save-pickle] [--dct] [--dct-states DCT_STATES [DCT_STATES ...]]
                   [--dct-threshold DCT_THRESHOLD] [--ct-threshold CT_THRESHOLD]
-                  [--le-threshold LE_THRESHOLD] [--voxels VOXELS] [--padding PADDING]
-                  [--no-save-cube] [--chimerax] [-o PREFIX] [--out-dir DIR]
+                  [--le-threshold LE_THRESHOLD] [--voxels N [N ...]] [--padding PADDING]
+                  [--no-save-cube] [--chimerax] [--orbital-grid]
+                  [--grid-states GRID_STATES [GRID_STATES ...]] [--grid-weight GRID_WEIGHT]
+                  [--grid-frontier N] [--grid-orbitals I [I ...]] [--grid-iso GRID_ISO]
+                  [--grid-dct-iso GRID_DCT_ISO] [--yes] [-o PREFIX] [--out-dir DIR]
                   [--fig-format {png,svg,pdf,eps}] [--dpi DPI] [--show] [--title TEXT]
                   [--xlabel TEXT] [--ylabel TEXT] [--xlim MIN MAX] [--ylim MIN MAX]
                   [--colors COLOR [COLOR ...]] [--linewidth W]
@@ -256,15 +287,31 @@ charge transfer (DCT):
                                 2.0)
   --le-threshold LE_THRESHOLD   Δr in Å below which a state is labelled local excitation (default:
                                 1.5)
-  --voxels VOXELS               Grid points per dimension for the DCT grid (default: 60)
+  --voxels N [N ...]            Grid points: N on every axis, or NX NY NZ (default: 60)
   --padding PADDING             Grid padding around the molecule in Å (default: 3.0)
   --no-save-cube                Do not write the difference-density cube files
   --chimerax                    Write the ChimeraX commands for the Δρ centroid spheres to
                                 <stem>_dct.cxc
 
+orbital grid (ChimeraX):
+  --orbital-grid                Write a multicube of the orbitals of the chosen states and a
+                                ChimeraX script (<stem>_grid.py) that lays them out; with --dct
+                                also the difference densities
+  --grid-states GRID_STATES [GRID_STATES ...]
+                                States for the grid (e.g. S1-S3 T1); default: the 4 lowest in
+                                energy
+  --grid-weight GRID_WEIGHT     Minimum weight of a transition for its orbitals to enter the grid
+                                (default: 0.1)
+  --grid-frontier N             Also HOMO-N ... HOMO and LUMO ... LUMO+N
+  --grid-orbitals I [I ...]     0-based orbital indices (e.g. 14-17 20), instead of the automatic
+                                choice
+  --grid-iso GRID_ISO           Isovalue of the orbitals (a.u.) (default: 0.02)
+  --grid-dct-iso GRID_DCT_ISO   Isovalue of the difference densities (a.u.) (default: 0.002)
+  --yes                         Do not ask before writing the grid (it asks only in an interactive
+                                terminal)
+
 thresholds:
-  -t THRESHOLD, --threshold THRESHOLD
-                                Minimum weight of an orbital transition to list it (default: 0.2)
+  -t, --threshold THRESHOLD     Minimum weight of an orbital transition to list it (default: 0.2)
 
 plot options:
   --fig-format {png,svg,pdf,eps}
@@ -287,13 +334,13 @@ plot options:
   --font-size PT                Base font size in points (titles and labels scale with it)
 
 ensemble averaging:
-  -c PATH, --checkpoint PATH    Checkpoint file (checkpoint.json, or csv/json) with Boltzmann
+  -c, --checkpoint PATH         Checkpoint file (checkpoint.json, or csv/json) with Boltzmann
                                 populations for ensemble averaging
   --read-boltzmann PROTOCOL     Protocol whose populations are read from the checkpoint (default:
                                 protocol of each file, or the latest)
-  -e {E,EZPVE,H,G}, --energy-term {E,EZPVE,H,G}
+  -e, --energy-term {E,EZPVE,H,G}
                                 Energy used for on-the-fly Boltzmann weights (default: G)
-  -T TEMP, --temp TEMP          Temperature in K (default: 298.15)
+  -T, --temp TEMP               Temperature in K (default: 298.15)
   --individual                  Also show per-conformer results next to the ensemble average
 
 output:
@@ -302,7 +349,7 @@ output:
   --format {table,json,csv}     Format of the tables printed on stdout (default: table)
   --table-file PATH             Also write all tables to PATH (.json, .csv or .txt; otherwise the
                                 --format is used)
-  -o PREFIX, --output PREFIX    Prefix of the aggregate spectra (superimposed, ensemble average),
+  -o, --output PREFIX           Prefix of the aggregate spectra (superimposed, ensemble average),
                                 relative to the current directory (default: spectra)
   --out-dir DIR                 Directory for per-input output files (default: next to each input
                                 file)
@@ -318,7 +365,11 @@ outputs:
                                 triplets
     Charge Transfer Distance Analysis (<file>)
                                 [--dct] Per state: energy, wavelength, f, Δr (Å) with CT/LE class,
-                                CT dipole q_CT·Δr (e·Å)
+                                CT dipole q_CT·Δr (e·Å), transferred charge q_CT (e) and sum of
+                                the transition weights Σw
+    Orbitals of the grid (<file>)
+                                [--orbital-grid] Index, cube id (index + 1), H/L label and energy
+                                (eV) of each orbital of the grid
     Charge Transfer Distance (CUBE)
                                 Δr (Å), CT dipole q_CT·Δr (e·Å) and grid size of each CUBE input
     Ensemble Weights (<n> conformers)
@@ -332,8 +383,13 @@ outputs:
   files (next to each input, or --out-dir):
     <stem>_<state>_delta_rho.cube
                                 [--dct] Difference density of each state (not with --no-save-cube)
-    <stem>_dct.cxc              [--chimerax] ChimeraX script with the +/− centroid spheres of Δρ
-                                (blue/red), for --dct or CUBE inputs
+    <stem>_dct.cxc              [--chimerax] ChimeraX script: opens the Δρ cubes (blue +, red −)
+                                and the +/− centroid spheres, for --dct or CUBE inputs
+    <stem>_orbitals.cube        [--orbital-grid] Multicube of the orbitals of the chosen states
+                                (cube ids 1-based = index + 1)
+    <stem>_grid.py              [--orbital-grid] ChimeraX script that lays out the orbitals
+                                (virtual on top, occupied below) and the Δρ of the states: open it
+                                in ChimeraX
     <plot>.csv                  [--save-spectra] Normalized curves of every saved spectrum plot,
                                 same name: Energy_eV, Wavelength_nm, one column per curve
     <plot>.pickle               [--save-pickle] Pickled matplotlib figure of every saved spectrum
@@ -353,6 +409,8 @@ examples:
       Per-file and superimposed spectra, plus their curves as CSV
   frog-tddft tddft.out --dct --dct-states S1-S3 T1 --chimerax --out-dir dct
       Charge-transfer distance of S1-S3 and T1, cubes and ChimeraX script in dct/
+  frog-tddft tddft.out --orbital-grid --dct --dct-states S1 S2 --voxels 60
+      Orbital multicube, Δρ of S1 and S2, and <stem>_grid.py to open in ChimeraX
 
 Data go to stdout, messages to stderr. Atom indices are 0-based unless stated otherwise.
 Step-by-step guide (what it is for, what you need, what to expect): docs/cli/frog-tddft.md.

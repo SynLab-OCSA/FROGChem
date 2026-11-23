@@ -49,8 +49,24 @@ steps:
     show_files:
       - path: dct/tddft_mos_dct.cxc
     after: |
-      All three states are *Local Exc.*: Δr is 0.86, 0.89 and 1.05 Å, all below the 1.5 Å threshold. The
-      centroids in the `.cxc` file show that the electron goes from the O side (red, negative Δρ, y between −0.354 and
-      −0.558 Å) towards the H atoms (blue, y between 0.493 and 0.533 Å). Load the molecule in ChimeraX and `open dct/tddft_mos_dct.cxc`
-      to draw the two spheres. The three `*_delta_rho.cube` files can be drawn at ±0.002 e/bohr³ or combined
-      with `frog-cube`.
+      All three states are *Local Exc.*: Δr is 0.86, 0.89 and 1.05 Å, all below the 1.5 Å threshold. About
+      0.8 e moves in each state (*q_CT*), and *Σw* is 0.988–0.999: the printed transitions carry almost all the
+      weight, so the rescaling of Δρ is small. The centroids in the `.cxc` file show that the electron goes from
+      the O side (red, negative Δρ, y between −0.354 and −0.558 Å) towards the H atoms (blue, y between 0.493
+      and 0.533 Å). Opened in a new ChimeraX session (`open dct/tddft_mos_dct.cxc`), the script draws the three
+      Δρ at ±0.002 e/bohr³ (it numbers them #1, #2, #3) and the two spheres of each state. The cube files can
+      also be combined with `frog-cube`.
+
+  - text: |
+      **4. Orbital grid for ChimeraX** with the difference densities of S1–S3, on the same 40 × 40 × 40 grid.
+      Only the end of the output is shown.
+    cmd: frog-tddft files/tddft_mos.out --orbital-grid --dct --dct-states S1-S3 --voxels 40 --out-dir grid
+    output: tail:22
+    after: |
+      * The orbitals come from the transitions with weight ≥ 0.10 in the four lowest states (the default of
+        `--grid-states`): HOMO−1, HOMO, LUMO and LUMO+1, written to one multicube.
+      * `grid/tddft_mos_grid.py` is the ChimeraX script: `open grid/tddft_mos_grid.py` lays out LUMO and LUMO+1
+        on top, HOMO and HOMO−1 below and the Δρ of S1–S3 at the bottom, each on its own copy of the
+        molecule, with a caption of the states and their transitions.
+      * Run from a terminal, the command shows this table and asks before writing the files; `--yes` skips
+        the question.

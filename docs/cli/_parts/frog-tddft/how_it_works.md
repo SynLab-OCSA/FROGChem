@@ -28,11 +28,25 @@ of orbital excitations $i \to a$ with their weights. It also returns the HOMO in
    \Delta\rho(\mathbf r) = \sum_{ia} w_{ia}\left[\varphi_a(\mathbf r)^2 - \varphi_i(\mathbf r)^2\right]
    $$
 
+   Only the transitions printed in the output enter the sum (ORCA prints weights above 0.01, Gaussian
+   coefficients above 0.1), so $\Sigma w = \sum_{ia} w_{ia}$ is a little below 1: Δρ is divided by
+   $\Sigma w$, shown in the table. This is the orbital-diagonal form of the difference density: the cross
+   terms $\varphi_a\varphi_b$ and $\varphi_i\varphi_j$ of the full unrelaxed Δρ are left out.
    The positive and negative voxels give the charge $q_\mathrm{CT}$ (e) and the barycentres
    $\mathbf R_+$, $\mathbf R_-$. Then $D_\mathrm{CT} = |\mathbf R_+ - \mathbf R_-|$ (Å) and the dipole is
    $q_\mathrm{CT} D_\mathrm{CT}$. `--dct-threshold` < 100 discards the voxels above that percentile of |Δρ|.
    The state is classified with `--le-threshold` and `--ct-threshold`.
-5. **Ensemble** (`-c`). Each state's E, f, R and ⟨S²⟩ are averaged with the Boltzmann weights over the
+5. **Orbital grid** (`--orbital-grid`). The orbitals are the $i$ and $a$ of every transition with
+   $w_{ia}$ ≥ `--grid-weight` (0.10) in the chosen states (`--grid-states`, by default the 4 lowest in
+   energy), plus HOMO−N … LUMO+N with `--grid-frontier`, or exactly the list of `--grid-orbitals`. The
+   automatic choice needs a closed-shell calculation. The orbitals are evaluated on the same box as in step
+   4 and written to one multicube, each with its largest lobe positive (as in `frog-density`).
+   `<stem>_grid.py` holds a manifest (file names, labels, energies, isovalues `--grid-iso` and
+   `--grid-dct-iso`, caption) followed by a viewer that runs inside ChimeraX. The viewer reads the cubes
+   itself, because ChimeraX's reader misreads multicubes with 10 or more orbitals. It opens one copy of the
+   geometry per panel, turned by 25° about the vertical axis, with virtual orbitals above occupied ones and
+   the Δρ cubes of `--dct` at the bottom, 3 panels per row, blue for + and red for −.
+6. **Ensemble** (`-c`). Each state's E, f, R and ⟨S²⟩ are averaged with the Boltzmann weights over the
    conformers that contain that state. The SOC matrix is averaged the same way. The spectrum is the
    weighted sum of the per-conformer curves.
 

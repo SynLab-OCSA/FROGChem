@@ -105,17 +105,34 @@ frog-tddft files/tddft_mos.out --dct --dct-states S1 S2 --voxels 40 --chimerax -
 ```
 
 ```text
-│ State │ Energy (eV) │ Wavelength (nm) │ Osc. Strength (f) │ Δr (Å)            │ Dipole Moment │
-│ S1    │ 7.58        │ 163.6           │ 0.0337            │ 0.86 (Local Exc.) │ 0.7171        │
-│ S2    │ 9.46        │ 131.1           │ 0.0000            │ 0.89 (Local Exc.) │ 0.7613        │
+│ State │ Energy (eV) │ Wavelength (nm) │ Osc. Strength (f) │ Δr (Å)            │ Dipole Moment │ q_CT (e) │ Σw    │
+│ S1    │ 7.58        │ 163.6           │ 0.0337            │ 0.86 (Local Exc.) │ 0.7181        │ 0.831    │ 0.999 │
+│ S2    │ 9.46        │ 131.1           │ 0.0000            │ 0.89 (Local Exc.) │ 0.7643        │ 0.862    │ 0.996 │
 ```
 
 * Δr < 1.5 Å = local excitation, > 2 Å = charge transfer, in between = mixed (`--le-threshold`,
   `--ct-threshold`). *Dipole Moment* is q_CT·Δr in e·Å.
+* *q_CT* is the charge that moves (the integral of the positive part of Δρ). Δρ is built only from the
+  transitions printed in the output, and *Σw* is the sum of their weights: Δρ is divided by Σw, so a
+  value well below 1 means that many small transitions are missing. Δr does not depend on this scaling.
 * One cube per state (`<stem>_S1_delta_rho.cube`) is written unless `--no-save-cube`; `--chimerax`
-  writes a ChimeraX script with the two barycentres (blue +, red −).
+  writes a ChimeraX script that opens these cubes and draws the two barycentres (blue +, red −).
 * A difference-density cube can be analysed again directly:
   `frog-tddft files/1_p8_orca_S1_delta_rho.cube` gives Δr = 0.77 Å (Local Exc.).
+
+### Orbital grid for ChimeraX
+
+```bash
+frog-tddft files/tddft_mos.out --orbital-grid --dct --dct-states S1-S3 --voxels 40 --out-dir grid
+```
+
+takes the orbitals of the transitions with weight ≥ 0.10 in the four lowest states (`--grid-states`,
+`--grid-weight`), writes them to one multicube (`grid/tddft_mos_orbitals.cube`) and writes
+`grid/tddft_mos_grid.py`. Opened in ChimeraX (`open grid/tddft_mos_grid.py`), the script shows one copy of
+the molecule per orbital, virtual orbitals on top and occupied below, and with `--dct` the Δρ of the
+states at the bottom, with a caption of the states and their transitions. `--grid-frontier N` adds
+HOMO−N … LUMO+N, `--grid-orbitals 14-17 20` chooses the orbitals by hand. Run from a terminal, the
+command lists the orbitals and asks before writing (`--yes` skips the question).
 
 ---
 

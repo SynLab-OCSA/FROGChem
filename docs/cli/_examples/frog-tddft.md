@@ -101,21 +101,27 @@ frog-tddft files/tddft_mos.out --dct --dct-states S1-S3 --voxels 40 --chimerax -
 ✔  Saved cube: dct/tddft_mos_S2_delta_rho.cube
 ℹ    S3: computing Δρ …
 ✔  Saved cube: dct/tddft_mos_S3_delta_rho.cube
-                        Charge Transfer Distance Analysis (tddft_mos.out)
-╭───────┬─────────────┬─────────────────┬───────────────────┬───────────────────┬───────────────╮
-│ State │ Energy (eV) │ Wavelength (nm) │ Osc. Strength (f) │ Δr (Å)            │ Dipole Moment │
-├───────┼─────────────┼─────────────────┼───────────────────┼───────────────────┼───────────────┤
-│ S1    │ 7.58        │ 163.6           │ 0.0337            │ 0.86 (Local Exc.) │ 0.7171        │
-│ S2    │ 9.46        │ 131.1           │ 0.0000            │ 0.89 (Local Exc.) │ 0.7613        │
-│ S3    │ 9.70        │ 127.8           │ 0.1023            │ 1.05 (Local Exc.) │ 0.8183        │
-╰───────┴─────────────┴─────────────────┴───────────────────┴───────────────────┴───────────────╯
+                                 Charge Transfer Distance Analysis (tddft_mos.out)
+╭───────┬─────────────┬─────────────────┬───────────────────┬───────────────────┬───────────────┬──────────┬───────╮
+│ State │ Energy (eV) │ Wavelength (nm) │ Osc. Strength (f) │ Δr (Å)            │ Dipole Moment │ q_CT (e) │ Σw    │
+├───────┼─────────────┼─────────────────┼───────────────────┼───────────────────┼───────────────┼──────────┼───────┤
+│ S1    │ 7.58        │ 163.6           │ 0.0337            │ 0.86 (Local Exc.) │ 0.7181        │ 0.831    │ 0.999 │
+│ S2    │ 9.46        │ 131.1           │ 0.0000            │ 0.89 (Local Exc.) │ 0.7643        │ 0.862    │ 0.996 │
+│ S3    │ 9.70        │ 127.8           │ 0.1023            │ 1.05 (Local Exc.) │ 0.8279        │ 0.788    │ 0.988 │
+╰───────┴─────────────┴─────────────────┴───────────────────┴───────────────────┴───────────────┴──────────┴───────╯
 ✔  Saved ChimeraX script: dct/tddft_mos_dct.cxc
 ```
 
 `dct/tddft_mos_dct.cxc`:
 
 ```text
-# Δρ centroids of tddft_mos.out (blue: +, red: −)
+# Δρ of tddft_mos.out (blue: +, red: −)
+open tddft_mos_S1_delta_rho.cube
+volume #1 style surface level -0.002 color red level 0.002 color blue transparency 0.25
+open tddft_mos_S2_delta_rho.cube
+volume #2 style surface level -0.002 color red level 0.002 color blue transparency 0.25
+open tddft_mos_S3_delta_rho.cube
+volume #3 style surface level -0.002 color red level 0.002 color blue transparency 0.25
 # S1
 shape sphere center -0.002,0.499,-0.000 radius 0.500 color blue
 shape sphere center 0.001,-0.365,-0.000 radius 0.500 color red
@@ -127,8 +133,51 @@ shape sphere center -0.001,0.493,-0.000 radius 0.500 color blue
 shape sphere center 0.001,-0.558,-0.000 radius 0.500 color red
 ```
 
-All three states are *Local Exc.*: Δr is 0.86, 0.89 and 1.05 Å, all below the 1.5 Å threshold. The
-centroids in the `.cxc` file show that the electron goes from the O side (red, negative Δρ, y between −0.354 and
-−0.558 Å) towards the H atoms (blue, y between 0.493 and 0.533 Å). Load the molecule in ChimeraX and `open dct/tddft_mos_dct.cxc`
-to draw the two spheres. The three `*_delta_rho.cube` files can be drawn at ±0.002 e/bohr³ or combined
-with `frog-cube`.
+All three states are *Local Exc.*: Δr is 0.86, 0.89 and 1.05 Å, all below the 1.5 Å threshold. About
+0.8 e moves in each state (*q_CT*), and *Σw* is 0.988–0.999: the printed transitions carry almost all the
+weight, so the rescaling of Δρ is small. The centroids in the `.cxc` file show that the electron goes from
+the O side (red, negative Δρ, y between −0.354 and −0.558 Å) towards the H atoms (blue, y between 0.493
+and 0.533 Å). Opened in a new ChimeraX session (`open dct/tddft_mos_dct.cxc`), the script draws the three
+Δρ at ±0.002 e/bohr³ (it numbers them #1, #2, #3) and the two spheres of each state. The cube files can
+also be combined with `frog-cube`.
+
+**4. Orbital grid for ChimeraX** with the difference densities of S1–S3, on the same 40 × 40 × 40 grid.
+Only the end of the output is shown.
+
+```bash
+frog-tddft files/tddft_mos.out --orbital-grid --dct --dct-states S1-S3 --voxels 40 --out-dir grid
+```
+
+```text
+…
+│ S2    │ 9.46        │ 131.1           │ 0.0000            │ 0.89 (Local Exc.) │ 0.7643        │ 0.862    │ 0.996 │
+│ S3    │ 9.70        │ 127.8           │ 0.1023            │ 1.05 (Local Exc.) │ 0.8279        │ 0.788    │ 0.988 │
+╰───────┴─────────────┴─────────────────┴───────────────────┴───────────────────┴───────────────┴──────────┴───────╯
+ℹ  HOMO = 4, LUMO = 5  (0-based; cube ids 5, 6)
+  Orbitals of the grid (tddft_mos.out)
+╭───────┬─────────┬───────┬─────────────╮
+│ Index │ Cube id │ Label │ Energy (eV) │
+├───────┼─────────┼───────┼─────────────┤
+│     3 │       4 │ H-1   │ -10.46      │
+│     4 │       5 │ H     │ -8.54       │
+│     5 │       6 │ L     │ +0.52       │
+│     6 │       7 │ L+1   │ +2.58       │
+╰───────┴─────────┴───────┴─────────────╯
+ℹ  Writing the orbital multicube (4 orbitals) ...
+ℹ  basis functions: 59
+ℹ  MOs: 59
+ℹ  atoms: 3
+ℹ  grid: 40 x 40 x 40 = 64,000 points
+ℹ  evaluating 4 orbital(s) (closed-shell) on the grid...
+ℹ  range: [-0.623198, 0.623198]
+✔  Saved cube: grid/tddft_mos_orbitals.cube
+✔  Saved ChimeraX grid script: grid/tddft_mos_grid.py
+```
+
+* The orbitals come from the transitions with weight ≥ 0.10 in the four lowest states (the default of
+  `--grid-states`): HOMO−1, HOMO, LUMO and LUMO+1, written to one multicube.
+* `grid/tddft_mos_grid.py` is the ChimeraX script: `open grid/tddft_mos_grid.py` lays out LUMO and LUMO+1
+  on top, HOMO and HOMO−1 below and the Δρ of S1–S3 at the bottom, each on its own copy of the
+  molecule, with a caption of the states and their transitions.
+* Run from a terminal, the command shows this table and asks before writing the files; `--yes` skips
+  the question.

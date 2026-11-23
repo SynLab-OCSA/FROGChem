@@ -4,13 +4,14 @@
 import argparse
 import pickle
 import re
+import sys
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional, Set
 import numpy as np
 
 from frogchem.filetypes import load_calculation
 from frogchem.printer import print_info, print_warning
-from frogchem.cli.base import CLICommand, Guide, Output, ENSEMBLE_WEIGHTS
+from frogchem.cli.base import CLICommand, Guide, Output, ENSEMBLE_WEIGHTS, _VoxelsAction
 from frogchem.exceptions import InputError
 from frogchem.io import parse_gaussian_cube, write_gaussian_cube
 from frogchem.math_geometry import calculate_centroids
@@ -401,7 +402,8 @@ def process_cube_dct(filepath: str, args) -> Tuple[List[Any], List[str]]:
     return row, _centroid_commands(res, Path(filepath).name)
 
 
-def process_calc_dct(calc, file_path: str, args, cmd: CLICommand) -> List[str]:
+def process_calc_dct(calc, file_path: str, args, cmd: CLICommand,
+                     collect: Optional[List[Dict[str, Any]]] = None) -> List[str]:
     """Excited-state difference densities and DCT analysis of a TD-DFT calculation.
 
     Emits the DCT table through cmd.output, writes one cube per state (unless --no-save-cube)
@@ -475,6 +477,8 @@ def process_calc_dct(calc, file_path: str, args, cmd: CLICommand) -> List[str]:
                     f"{fosc:.4f}",
                     'N/A',
                     'N/A',
+                    'N/A',
+                    'N/A',
                 ])
                 continue
 
@@ -482,6 +486,11 @@ def process_calc_dct(calc, file_path: str, args, cmd: CLICommand) -> List[str]:
             delta_rho = compute_difference_density_on_points(
                 calc, transitions, points, bf_matrix=bf,
             )
+            # Only the printed transitions are used (weights above the program's print cut): the
+            # sum of their weights is ~0.9-1, so the density is rescaled to unit total weight.
+            wsum = sum(float(t[2]) for t in transitions if float(t[2]) >= 1e-6)
+            if wsum > 0:
+                delta_rho = delta_rho / wsum
             data_3d = delta_rho.reshape(nx, ny, nz)
 
             cube_data = _make_cube_data(
@@ -490,7 +499,8 @@ def process_calc_dct(calc, file_path: str, args, cmd: CLICommand) -> List[str]:
                 comment=f'Delta rho = rho_exc - rho_GS, Grid: {nx}x{ny}x{nz}',
             )
 
-            if args.save_cube:
+            cube_path = None
+            if args.save_cube or collect is not None:
                 cube_path = cmd.derived_path(file_path, f"{state_tag}_delta_rho", '.cube')
                 write_gaussian_cube(filename=str(cube_path), cube_data=cube_data)
                 cmd.saved(cube_path, 'cube')
@@ -509,6 +519,7 @@ def process_calc_dct(calc, file_path: str, args, cmd: CLICommand) -> List[str]:
             else:
                 dist_str = 'N/A'
 
+            q_str = (f"{res['positive_charge']:.3f}" if res.get('positive_charge') is not None else 'N/A')
             table_rows.append([
                 state_tag,
                 f"{energy_ev:.2f}",
@@ -516,7 +527,12 @@ def process_calc_dct(calc, file_path: str, args, cmd: CLICommand) -> List[str]:
                 f"{fosc:.4f}",
                 dist_str,
                 dipole_val,
+                q_str,
+                f"{wsum:.3f}",
             ])
+            if collect is not None:
+                collect.append({'tag': state_tag, 'path': str(cube_path), 'energy': energy_ev,
+                                'dist': dist_str})
             commands += _centroid_commands(res, state_tag)
 
     del bf
@@ -524,10 +540,183 @@ def process_calc_dct(calc, file_path: str, args, cmd: CLICommand) -> List[str]:
     cmd.output(
         table_rows,
         headers=['State', 'Energy (eV)', 'Wavelength (nm)',
-                 'Osc. Strength (f)', 'Δr (Å)', 'Dipole Moment'],
+                 'Osc. Strength (f)', 'Δr (Å)', 'Dipole Moment', 'q_CT (e)', 'Σw'],
         title=f"Charge Transfer Distance Analysis ({Path(file_path).name})",
     )
     return commands
+
+
+def _index_tokens(tokens) -> List[int]:
+    """0-based orbital indices from tokens like 14-17, 20 or 14,15 16."""
+    out: Set[int] = set()
+    for tok in tokens:
+        for part in str(tok).replace(' ', '').split(','):
+            if not part:
+                continue
+            if '-' in part:
+                a, b = part.split('-', 1)
+                out.update(range(int(a), int(b) + 1))
+            else:
+                out.add(int(part))
+    return sorted(out)
+
+
+def _dct_selected(dct_filter, mult: int, state_num: int) -> bool:
+    """Same rule as process_calc_dct: a state passes the --dct-states / --grid-states filter."""
+    if dct_filter is None:
+        return True
+    if mult in dct_filter:
+        return state_num in dct_filter[mult]
+    if None in dct_filter:
+        return state_num in dct_filter[None]
+    return False
+
+
+#: Above this many orbitals the ChimeraX grid gets crowded: warn, and ask in a terminal.
+GRID_MANY_ORBITALS = 12
+
+
+def _confirm_grid_orbitals(indices: List[int], n_mos: int, args) -> Optional[List[int]]:
+    """Ask before writing the grid (interactive terminal only, unless --yes).
+
+    Enter or 'y' keeps the selection, 'n' cancels (returns None), indices such as
+    '14-17 20' replace it. Without a terminal the selection is kept as it is.
+    """
+    if len(indices) > GRID_MANY_ORBITALS:
+        print_warning(f"{len(indices)} orbitals: the grid will be large (more than {GRID_MANY_ORBITALS} panels); "
+                      "restrict it with --grid-states, --grid-weight or --grid-orbitals")
+    if args.yes or not (sys.stdin.isatty() and sys.stderr.isatty()):
+        return indices
+    while True:
+        print(f"Grid with {len(indices)} orbitals (cube ids {[i + 1 for i in indices]}).", file=sys.stderr)
+        print("  Enter/y = write it   n = cancel   or other 0-based indices, e.g. 14-17 20", file=sys.stderr)
+        try:
+            answer = input("> ").strip().lower()
+        except EOFError:
+            return indices
+        if answer in ('', 'y', 'yes', 's', 'si', 'sì'):
+            return indices
+        if answer in ('n', 'no'):
+            return None
+        try:
+            new = _index_tokens(answer.split())
+        except ValueError:
+            print_warning(f"Not understood: {answer!r}")
+            continue
+        bad = [i for i in new if not 0 <= i < n_mos]
+        if bad or not new:
+            print_warning(f"Indices must be between 0 and {n_mos - 1}")
+            continue
+        indices = new
+
+
+def process_orbital_grid(calc, file_path: str, args, cmd: CLICommand, dct_cubes: List[Dict[str, Any]]) -> None:
+    """Multicube of the orbitals of the chosen states and a ChimeraX script that lays them out.
+
+    Orbitals: the transitions of the chosen states above --grid-weight (or --grid-orbitals when
+    given), plus HOMO-N ... LUMO+N with --grid-frontier. Layout: virtual orbitals on top,
+    occupied below, the difference densities of dct_cubes (if any) at the bottom.
+    """
+    from frogchem.density_builder import build_orbitals_cube, _spin_coeffs
+    from frogchem.chimerax_viewer import write_grid_script, panel, group
+
+    if not getattr(calc, 'tddft_states', None):
+        raise InputError(f"No excited states in {file_path}")
+    if not hasattr(calc, 'orbital_coefficients') or calc.orbital_coefficients is None:
+        raise InputError(f"No MO coefficients in {file_path}: the orbital grid needs "
+                         "'! PrintBasis PrintMOs' (ORCA) or 'pop=full gfinput' (Gaussian)")
+    open_shell = _spin_coeffs(calc) is not None
+    if open_shell and not args.grid_orbitals:
+        raise InputError("--orbital-grid: the automatic choice needs a closed-shell calculation; "
+                         "for an open-shell one give the alpha orbitals with --grid-orbitals")
+
+    homo = calc.homo
+    lumo = homo + 1
+    n_mos = calc.orbital_coefficients.shape[1]
+    en_all = getattr(calc, 'orbital_energies', None)
+
+    def energy(i):
+        if en_all is None or i >= len(en_all):
+            return None
+        return float(en_all[i]) * 27.211386
+
+    states = []
+    for mult in calc.tddft_states:
+        for n, st in calc.tddft_states[mult].items():
+            states.append((float(st.get('energy', 0.0)), mult, n, st))
+    states.sort(key=lambda t: t[0])
+    sel = parse_dct_state_selection(args.grid_states)
+    chosen = states[:4] if sel is None else [t for t in states if _dct_selected(sel, t[1], t[2])]
+    if not chosen:
+        raise InputError(f"No excited state of {file_path} matches --grid-states")
+
+    if args.grid_orbitals:
+        indices = set(_index_tokens(args.grid_orbitals))
+    else:
+        indices = set()
+        for _, _, _, st in chosen:
+            for t in st.get('population', []):
+                if float(t[2]) >= args.grid_weight:
+                    indices.update((int(t[0]), int(t[1])))
+    if args.grid_frontier is not None:
+        indices.update(range(max(0, homo - args.grid_frontier), homo + 1))
+        indices.update(range(lumo, lumo + args.grid_frontier + 1))
+    bad = [i for i in indices if not 0 <= i < n_mos]
+    if bad:
+        raise InputError(f"Orbital index out of range (0-{n_mos - 1}): {sorted(bad)}")
+    indices_list = sorted(indices)
+    if not indices_list:
+        raise InputError("No orbital selected for the grid: lower --grid-weight or give --grid-orbitals")
+
+    def label(i):
+        en = energy(i)
+        text = f"{format_orbital_label(i, homo)} (cube {i + 1})"
+        return f"{text} {en:+.2f} eV" if en is not None else text
+
+    rows = [[i, i + 1, format_orbital_label(i, homo),
+             f"{energy(i):+.2f}" if energy(i) is not None else 'N/A'] for i in indices_list]
+    print_info(f"HOMO = {homo}, LUMO = {lumo}  (0-based; cube ids {homo + 1}, {lumo + 1})")
+    cmd.output(rows, headers=['Index', 'Cube id', 'Label', 'Energy (eV)'],
+               title=f"Orbitals of the grid ({Path(file_path).name})")
+    indices_list = _confirm_grid_orbitals(indices_list, n_mos, args)
+    if indices_list is None:
+        print_info("Orbital grid not written")
+        return
+
+    print_info(f"Writing the orbital multicube ({len(indices_list)} orbitals) ...")
+    out_cube = cmd.derived_path(file_path, 'orbitals', '.cube')
+    build_orbitals_cube(calc, indices_list, str(out_cube), n_voxels=args.voxels, padding=args.padding)
+    cmd.saved(out_cube, 'cube')
+
+    comp = {i: k for k, i in enumerate(indices_list)}
+    iso = args.grid_iso
+    virt = [i for i in indices_list if i > homo]
+    occ = sorted((i for i in indices_list if i <= homo), reverse=True)
+    groups = []
+    if virt:
+        groups.append(group('Virtual orbitals', [panel(out_cube.name, label(i), iso, comp[i]) for i in virt]))
+    if occ:
+        groups.append(group('Occupied orbitals', [panel(out_cube.name, label(i), iso, comp[i]) for i in occ]))
+    if dct_cubes:
+        groups.append(group('Difference densities (blue: gained, red: lost)', [
+            panel(Path(c['path']).name, f"{c['tag']} {c['energy']:.2f} eV, Δr {c['dist']}", args.grid_dct_iso)
+            for c in dct_cubes]))
+
+    stem = Path(file_path).name
+    caption = [f"{stem}: orbitals at ±{iso:g} a.u. (blue +, red −)"]
+    for energy_ev, mult, n, st in chosen:
+        trans = ", ".join(
+            format_transition(int(t[0]), int(t[1]), float(t[2]),
+                              spin=(t[3] if len(t) > 3 and open_shell else ''), homo=homo)
+            for t in st.get('population', []) if float(t[2]) >= args.grid_weight)
+        caption.append(f"{state_label(mult, n)} {energy_ev:.2f} eV, f {float(st.get('fosc', 0.0)):.3f}: {trans}")
+
+    script = cmd.derived_path(file_path, 'grid', '.py')
+    write_grid_script(script, {
+        'title': stem, 'geometry': out_cube.name, 'columns': 3, 'turn': 25.0,
+        'transparency': 0.25, 'global_style': True, 'caption': caption, 'groups': groups,
+    })
+    cmd.saved(script, 'ChimeraX grid script')
 
 
 _SPECTRA = (('uv', 'UV', 'fosc'), ('ecd', 'ECD', 'R'))
@@ -554,7 +743,11 @@ class TddftParser(CLICommand, name='frog-tddft'):
                'SOC between singlets (rows) and triplets (columns), cm⁻¹; only for SOC calculations, '
                'filtered by --soc-states/--soc-singlets/--soc-triplets'),
         Output('table', 'Charge Transfer Distance Analysis (<file>)',
-               'Per state: energy, wavelength, f, Δr (Å) with CT/LE class, CT dipole q_CT·Δr (e·Å)', when='--dct'),
+               'Per state: energy, wavelength, f, Δr (Å) with CT/LE class, CT dipole q_CT·Δr (e·Å), '
+               'transferred charge q_CT (e) and sum of the transition weights Σw', when='--dct'),
+        Output('table', 'Orbitals of the grid (<file>)',
+               'Index, cube id (index + 1), H/L label and energy (eV) of each orbital of the grid',
+               when='--orbital-grid'),
         Output('table', 'Charge Transfer Distance (CUBE)', 'Δr (Å), CT dipole q_CT·Δr (e·Å) and grid size of each CUBE input'),
         ENSEMBLE_WEIGHTS,
         Output('table', 'Ensemble-Averaged Excited States (Boltzmann Weighted)',
@@ -564,8 +757,13 @@ class TddftParser(CLICommand, name='frog-tddft'):
                'Weighted SOC matrix (cm⁻¹)', when='-c'),
         Output('file', '<stem>_<state>_delta_rho.cube', 'Difference density of each state '
                                                         '(not with --no-save-cube)', when='--dct'),
-        Output('file', '<stem>_dct.cxc', 'ChimeraX script with the +/− centroid spheres of Δρ '
-                                         '(blue/red), for --dct or CUBE inputs', when='--chimerax'),
+        Output('file', '<stem>_dct.cxc', 'ChimeraX script: opens the Δρ cubes (blue +, red −) and the +/− '
+                                         'centroid spheres, for --dct or CUBE inputs', when='--chimerax'),
+        Output('file', '<stem>_orbitals.cube', 'Multicube of the orbitals of the chosen states '
+                                               '(cube ids 1-based = index + 1)', when='--orbital-grid'),
+        Output('file', '<stem>_grid.py', 'ChimeraX script that lays out the orbitals (virtual on top, occupied '
+                                         'below) and the Δρ of the states: open it in ChimeraX',
+               when='--orbital-grid'),
         Output('file', '<plot>.csv', 'Normalized curves of every saved spectrum plot, same name: '
                                      'Energy_eV, Wavelength_nm, one column per curve', when='--save-spectra'),
         Output('file', '<plot>.pickle', 'Pickled matplotlib figure of every saved spectrum plot',
@@ -598,7 +796,7 @@ class TddftParser(CLICommand, name='frog-tddft'):
             (energies, f, R and transitions; with `td=(50-50,nstates=10)` singlets and triplets are numbered
             S1…, T1… as in ORCA; checked against ORCA `tda false` on (R)-methyloxirane).
 
-            For `--dct` the output must also contain the basis set and all the MO coefficients: ORCA
+            For `--dct` and `--orbital-grid` the output must also contain the basis set and all the MO coefficients: ORCA
             `! PrintBasis PrintMOs`; Gaussian `#p ... pop=full iop(3/33=1) iop(6/80=1) gfinput` (pure `5D 7F` or
             Cartesian `6D 10F` functions). Alternatively give an existing difference-density cube
             (`.cube`, e.g. written by an earlier `--dct` run) and it is analysed directly. For `-c` you need a
@@ -616,8 +814,17 @@ class TddftParser(CLICommand, name='frog-tddft'):
             "`spectra_UV_superimposed.png` (prefix from `-o`); with `-c checkpoint.json` the states and the "
             "spectrum are Boltzmann-averaged (`spectra_UV_ensemble.png`).",
             "Charge-transfer analysis: `--dct` for all states, or `--dct --dct-states S1-S3 T1` for some of "
-            "them, with the same labels as the table; `--voxels` (default 60) sets the grid, `--chimerax` writes "
-            "a ChimeraX script with the +/− centroids, `--no-save-cube` skips the Δρ cube files.",
+            "them, with the same labels as the table; `--voxels` sets the grid (60 points per axis by default, "
+            "or `--voxels NX NY NZ`), `--chimerax` writes a ChimeraX script that opens the Δρ cubes and draws the "
+            "+/− centroids, `--no-save-cube` skips the Δρ cube files (they are still written when `--chimerax` or "
+            "`--orbital-grid` need them).",
+            "Orbital figure: `--orbital-grid` writes `<stem>_orbitals.cube` (one multicube) and `<stem>_grid.py`; "
+            "open the script in ChimeraX (`open job_grid.py`, kept next to the cubes). The orbitals are those of "
+            "the transitions with weight ≥ `--grid-weight` (0.10) in the states of `--grid-states` (default: the "
+            "4 lowest), plus HOMO−N … LUMO+N with `--grid-frontier N`; `--grid-orbitals 14-17 20` gives them by "
+            "hand instead. In a terminal the command lists them and asks before writing (Enter = write, `n` = "
+            "cancel, or type other indices); `--yes` skips the question. Add `--dct` to show the Δρ of the "
+            "`--dct-states` in a bottom row.",
             "Restrict the SOC matrix to the states you care about with `--soc-states S0 S1 T1 T2` "
             "(ranges like `T1-T5` work).",
         ],
@@ -644,6 +851,16 @@ class TddftParser(CLICommand, name='frog-tddft'):
               (*Charge Trans.*), in between *Mixed CT/LE* (change with `--le-threshold`/`--ct-threshold`). The
               *Dipole Moment* column is q_CT·Δr in e·Å. A grid that is too coarse or a too small `--padding`
               makes Δr noisy: compare states computed with the same grid.
+            * **q_CT** (e) is the charge that moves: the integral of the positive part of Δρ (equal to the
+              negative part). **Σw** is the sum of the weights of the transitions printed by ORCA/Gaussian, the
+              only ones Δρ is built from; Δρ is divided by Σw, so a value well below 1 means that many small
+              transitions are missing and q_CT is less reliable. Δr does not depend on this scaling.
+            * **Orbital grid** (`--orbital-grid`): a table of the orbitals (index, cube id = index + 1, H/L
+              label, energy) and, in ChimeraX, one copy of the molecule per orbital: virtual orbitals on top
+              (LUMO first), occupied below (HOMO first), Δρ of the states at the bottom. Blue is the positive
+              lobe (density gained, for Δρ), red the negative one; a caption lists the states and their
+              transitions. Any number of orbitals works, 3 per row; above 12 the command warns that the
+              picture gets crowded.
             * An output whose TD-DFT part did not finish has no states: no table is printed (the UV/ECD
               plots are then empty). Check that the job ended normally.
 
@@ -659,6 +876,8 @@ class TddftParser(CLICommand, name='frog-tddft'):
          'Per-file and superimposed spectra, plus their curves as CSV'),
         ('frog-tddft tddft.out --dct --dct-states S1-S3 T1 --chimerax --out-dir dct',
          'Charge-transfer distance of S1-S3 and T1, cubes and ChimeraX script in dct/'),
+        ('frog-tddft tddft.out --orbital-grid --dct --dct-states S1 S2 --voxels 60',
+         'Orbital multicube, Δρ of S1 and S2, and <stem>_grid.py to open in ChimeraX'),
     ]
 
     def setup_args(self, parser):
@@ -699,12 +918,31 @@ class TddftParser(CLICommand, name='frog-tddft'):
                          help='Δr in Å above which a state is labelled charge transfer')
         dct.add_argument('--le-threshold', type=float, default=1.5,
                          help='Δr in Å below which a state is labelled local excitation')
-        dct.add_argument('--voxels', type=int, default=60, help='Grid points per dimension for the DCT grid')
+        dct.add_argument('--voxels', nargs='+', action=_VoxelsAction, default=60,
+                         metavar='N', help='Grid points: N on every axis, or NX NY NZ')
         dct.add_argument('--padding', type=float, default=3.0, help='Grid padding around the molecule in Å')
         dct.add_argument('--no-save-cube', dest='save_cube', action='store_false',
                          help='Do not write the difference-density cube files')
         dct.add_argument('--chimerax', action='store_true',
                          help='Write the ChimeraX commands for the Δρ centroid spheres to <stem>_dct.cxc')
+
+        grid = parser.add_argument_group('orbital grid (ChimeraX)')
+        grid.add_argument('--orbital-grid', action='store_true',
+                          help='Write a multicube of the orbitals of the chosen states and a ChimeraX script '
+                               '(<stem>_grid.py) that lays them out; with --dct also the difference densities')
+        grid.add_argument('--grid-states', nargs='+', default=None,
+                          help='States for the grid (e.g. S1-S3 T1); default: the 4 lowest in energy')
+        grid.add_argument('--grid-weight', type=float, default=0.10,
+                          help='Minimum weight of a transition for its orbitals to enter the grid')
+        grid.add_argument('--grid-frontier', type=int, default=None, metavar='N',
+                          help='Also HOMO-N ... HOMO and LUMO ... LUMO+N')
+        grid.add_argument('--grid-orbitals', nargs='+', default=None, metavar='I',
+                          help='0-based orbital indices (e.g. 14-17 20), instead of the automatic choice')
+        grid.add_argument('--grid-iso', type=float, default=0.02, help='Isovalue of the orbitals (a.u.)')
+        grid.add_argument('--grid-dct-iso', type=float, default=0.002,
+                          help='Isovalue of the difference densities (a.u.)')
+        grid.add_argument('--yes', action='store_true',
+                          help='Do not ask before writing the grid (it asks only in an interactive terminal)')
 
         self.add_output_arg(parser, default='spectra', metavar='PREFIX',
                             help='Prefix of the aggregate spectra (superimposed, ensemble average), '
@@ -733,12 +971,18 @@ class TddftParser(CLICommand, name='frog-tddft'):
             intensities = ecd_band_intensities(energies, intensities)
         return gaussian_convolution(x_ev, energies, intensities, self.args.fwhm)
 
-    def _write_chimerax(self, input_path, commands):
-        if not (self.args.chimerax and commands):
+    def _write_chimerax(self, input_path, commands, cubes=()):
+        if not (self.args.chimerax and (commands or cubes)):
             return
         path = self.derived_path(input_path, 'dct', '.cxc')
-        path.write_text(f"# Δρ centroids of {Path(input_path).name} (blue: +, red: −)\n"
-                        + "\n".join(commands) + "\n", encoding='utf-8')
+        iso = self.args.grid_dct_iso
+        lines = [f"# Δρ of {Path(input_path).name} (blue: +, red: −)"]
+        for k, cube in enumerate(cubes, start=1):
+            lines.append(f"open {Path(cube).name}")
+            lines.append(f"volume #{k} style surface level {-iso} color red level {iso} color blue "
+                         "transparency 0.25")
+        lines += list(commands)
+        path.write_text("\n".join(lines) + "\n", encoding='utf-8')
         self.saved(path, 'ChimeraX script')
 
     def _soc_table(self, headers, rows, title, where):
@@ -815,8 +1059,14 @@ class TddftParser(CLICommand, name='frog-tddft'):
                 else:
                     print_warning(f"SOC data found in {file_path} but no SOC table could be built.")
 
+            need_cubes = args.orbital_grid or args.chimerax
+            dct_cubes: List[Dict[str, Any]] = []
             if args.dct or args.dct_states:
-                self._write_chimerax(item['path'], process_calc_dct(calc, file_path, args, self))
+                dct_commands = process_calc_dct(calc, file_path, args, self,
+                                                collect=dct_cubes if need_cubes else None)
+                self._write_chimerax(item['path'], dct_commands, [c['path'] for c in dct_cubes])
+            if args.orbital_grid:
+                process_orbital_grid(calc, file_path, args, self, dct_cubes)
 
             for flag, name, key in _SPECTRA:
                 if getattr(args, flag):
