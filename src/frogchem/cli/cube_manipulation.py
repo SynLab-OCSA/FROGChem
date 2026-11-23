@@ -15,6 +15,15 @@ from frogchem.io import parse_gaussian_cube, write_gaussian_cube
 from frogchem.printer import print_info
 
 
+def _cube_stem(path) -> str:
+    """File name without .gz and .cube / .cub: 'x.cube.gz' -> 'x'."""
+    name = Path(path).name
+    for ext in ('.gz', '.cube', '.cub'):
+        if name.lower().endswith(ext):
+            name = name[:-len(ext)]
+    return name
+
+
 class CubeManipulation(CLICommand, name='frog-cube'):
     """Add, subtract or scale Gaussian cube files.
 
@@ -103,8 +112,8 @@ class CubeManipulation(CLICommand, name='frog-cube'):
         g1 = parse_gaussian_cube(f1)
         g2 = parse_gaussian_cube(f2)
         if op == 'add':
-            return add_grids(g1, g2), Path(f'{Path(f2).stem}_plus_{Path(f1).stem}.cube')
-        return subtract_grids(g1, g2), Path(f'{Path(f2).stem}_minus_{Path(f1).stem}.cube')
+            return add_grids(g1, g2), Path(f'{_cube_stem(f2)}_plus_{_cube_stem(f1)}.cube')
+        return subtract_grids(g1, g2), Path(f'{_cube_stem(f2)}_minus_{_cube_stem(f1)}.cube')
 
     def _scale(self, f1, const_str):
         try:
