@@ -49,13 +49,13 @@ Shared by every command: `-v/--verbose`, `-q/--quiet`, `--format {table,json,csv
 
 | Kind | Name | When | Description |
 |---|---|---|---|
-| Terminal | `Atomic Spin Populations (<file>)` | always | One row per atom: integrated spin and % of the total |
-| Terminal | `Fragment Spin Populations (<file>)` | `--fragment/--interactive` | One row per fragment plus "Rest of system": spin and % of the total |
+| Terminal | `Atomic Spin Populations (<file>)` | always | One row per atom: integrated spin, signed % of the total and % of the absolute spin |
+| Terminal | `Fragment Spin Populations (<file>)` | `--fragment/--interactive` | One row per fragment plus "Rest of system": spin, % of the total and % of the absolute spin |
 
 ### How to read it
 
-A table with one row per atom: **Spin** (in electrons, α − β) and **% Total**, followed by a
-*Total* row; with `--fragment` a second table with the fragment sums.
+A table with one row per atom: **Spin** (in electrons, α − β), **% Total** and **% |Spin|**,
+followed by a *Total* row; with `--fragment` a second table with the fragment sums.
 
 * The *Total* should be close to the number of unpaired electrons: about **1** for a doublet,
   **2** for a triplet, **3** for a quartet. Small deviations (±0.01–0.02) come from the finite
@@ -63,6 +63,10 @@ A table with one row per atom: **Spin** (in electrons, α − β) and **% Total*
   `frog-density`) or the grid too coarse.
 * Negative values are normal: they are *spin polarisation* (β excess) on atoms next to the
   spin-carrying centre.
+* **% Total** is signed (spin / total): it sums to 100 %, so an atom with negative spin gets a
+  negative %, and the others can go above 100 %. With a total close to zero (broken-symmetry
+  singlet) it blows up: read the Spin column instead. **% |Spin|** is |spin| / Σ|spin|, always
+  positive and summing to 100 %: where the spin density sits, whatever its sign.
 * Each grid point is assigned to the **nearest atom** (Voronoi partition), regardless of atom size.
   Numbers are therefore close to, but not the same as, the Mulliken or Löwdin spin populations
   printed by ORCA (e.g. N 0.61 here vs 0.72 Mulliken). Compare trends within the same method,
@@ -117,10 +121,11 @@ output:
 outputs:
   terminal (stdout; --format table|json|csv, --table-file PATH):
     Atomic Spin Populations (<file>)
-                                One row per atom: integrated spin and % of the total
+                                One row per atom: integrated spin, signed % of the total and % of
+                                the absolute spin
     Fragment Spin Populations (<file>)
                                 [--fragment/--interactive] One row per fragment plus "Rest of
-                                system": spin and % of the total
+                                system": spin, % of the total and % of the absolute spin
 
 examples:
   frog-spin spin.cube

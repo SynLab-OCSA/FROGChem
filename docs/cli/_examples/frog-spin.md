@@ -36,17 +36,17 @@ cd tests/data/gaussian_ref/runs/cubes_g03_ch3_uks_orca && frog-spin g03_ch3_uks_
 ℹ  Loaded cube: 4 atoms, grid (40, 40, 40)
 ℹ  Integrating spin density (Voronoi partition)...
 ℹ  Total integrated spin: 0.9996
-        Atomic Spin Populations
-    (g03_ch3_uks_spin_density.cube)
-╭───────┬─────────┬────────┬──────────╮
-│ Idx   │ Element │   Spin │  % Total │
-├───────┼─────────┼────────┼──────────┤
-│ 0     │ C       │ 0.6820 │  68.2270 │
-│ 1     │ H       │ 0.1208 │  12.0814 │
-│ 2     │ H       │ 0.0984 │   9.8458 │
-│ 3     │ H       │ 0.0984 │   9.8458 │
-│ Total │         │ 0.9996 │ 100.0000 │
-╰───────┴─────────┴────────┴──────────╯
+             Atomic Spin Populations
+         (g03_ch3_uks_spin_density.cube)
+╭───────┬─────────┬────────┬──────────┬──────────╮
+│ Idx   │ Element │   Spin │  % Total │ % |Spin| │
+├───────┼─────────┼────────┼──────────┼──────────┤
+│ 0     │ C       │ 0.6820 │  68.2270 │  68.2270 │
+│ 1     │ H       │ 0.1208 │  12.0814 │  12.0814 │
+│ 2     │ H       │ 0.0984 │   9.8458 │   9.8458 │
+│ 3     │ H       │ 0.0984 │   9.8458 │   9.8458 │
+│ Total │         │ 0.9996 │ 100.0000 │ 100.0000 │
+╰───────┴─────────┴────────┴──────────┴──────────╯
 ```
 
 * The total is 0.9996, i.e. one unpaired electron, as expected for a doublet. The 0.04 % missing comes
@@ -63,25 +63,25 @@ cd tests/data/gaussian_ref/runs/cubes_g03_ch3_uks_gaussian && frog-spin g03_ch3_
 ```
 
 ```text
-        Atomic Spin Populations
-    (g03_ch3_uks_spin_density.cube)
-╭───────┬─────────┬────────┬──────────╮
-│ Idx   │ Element │   Spin │  % Total │
-├───────┼─────────┼────────┼──────────┤
-│ 0     │ C       │ 0.6820 │  68.2272 │
-│ 1     │ H       │ 0.1208 │  12.0817 │
-│ 2     │ H       │ 0.0984 │   9.8456 │
-│ 3     │ H       │ 0.0984 │   9.8456 │
-│ Total │         │ 0.9995 │ 100.0000 │
-╰───────┴─────────┴────────┴──────────╯
-   Fragment Spin Populations
-(g03_ch3_uks_spin_density.cube)
-╭──────────┬────────┬─────────╮
-│ Fragment │   Spin │ % Total │
-├──────────┼────────┼─────────┤
-│ C        │ 0.6820 │ 68.2272 │
-│ CH3_H    │ 0.3176 │ 31.7728 │
-╰──────────┴────────┴─────────╯
+             Atomic Spin Populations
+         (g03_ch3_uks_spin_density.cube)
+╭───────┬─────────┬────────┬──────────┬──────────╮
+│ Idx   │ Element │   Spin │  % Total │ % |Spin| │
+├───────┼─────────┼────────┼──────────┼──────────┤
+│ 0     │ C       │ 0.6820 │  68.2272 │  68.2272 │
+│ 1     │ H       │ 0.1208 │  12.0817 │  12.0817 │
+│ 2     │ H       │ 0.0984 │   9.8456 │   9.8456 │
+│ 3     │ H       │ 0.0984 │   9.8456 │   9.8456 │
+│ Total │         │ 0.9995 │ 100.0000 │ 100.0000 │
+╰───────┴─────────┴────────┴──────────┴──────────╯
+        Fragment Spin Populations
+     (g03_ch3_uks_spin_density.cube)
+╭──────────┬────────┬─────────┬──────────╮
+│ Fragment │   Spin │ % Total │ % |Spin| │
+├──────────┼────────┼─────────┼──────────┤
+│ C        │ 0.6820 │ 68.2272 │  68.2272 │
+│ CH3_H    │ 0.3176 │ 31.7728 │  31.7728 │
+╰──────────┴────────┴─────────┴──────────╯
 ```
 
 The Gaussian cube gives the same partition as the ORCA one: 0.6820 on C and 0.3176 on the hydrogens.

@@ -288,6 +288,31 @@ class TestNicsGeometryCLI:
 
 
 class TestCalcLocSpinHelpers:
+    def test_abs_spin_percentage(self, tmp_path, capsys):
+        """% Total is signed (negative for a beta-excess atom), % |Spin| is |N_A| / sum |N_B|."""
+        from frogchem.cli.calc_loc_spin import CalcLocSpin
+        from frogchem.io import write_gaussian_cube
+        # two atoms far apart along x; left half +1.2, right half -0.2 (in units of the voxel volume)
+        data = np.zeros((4, 1, 1))
+        data[:2, 0, 0] = 0.6
+        data[2:, 0, 0] = -0.1
+        cube = dict(title="t", comment="c", natoms=2, origin=np.zeros(3), grid_size=(4, 1, 1),
+                    voxel_vectors=np.eye(3), units="Bohr", data=data,
+                    atoms=[{"atomic_number": 6, "charge": 6.0, "coords": np.array([0.5, 0.0, 0.0])},
+                           {"atomic_number": 1, "charge": 1.0, "coords": np.array([2.5, 0.0, 0.0])}])
+        path = tmp_path / "spin.cube"
+        write_gaussian_cube(str(path), cube)
+        CalcLocSpin().main([str(path), "--fragment", "H:1", "--format", "json", "-q"])
+        tables = json.loads(capsys.readouterr().out)
+        atoms = tables[0]["rows"]
+        assert atoms[0]["% Total"] == pytest.approx(120.0)
+        assert atoms[1]["% Total"] == pytest.approx(-20.0)
+        assert atoms[0]["% |Spin|"] == pytest.approx(1.2 / 1.4 * 100)
+        assert atoms[1]["% |Spin|"] == pytest.approx(0.2 / 1.4 * 100)
+        assert atoms[2]["% |Spin|"] == pytest.approx(100.0)
+        frag = {r["Fragment"]: r for r in tables[1]["rows"]}
+        assert frag["H"]["% |Spin|"] == pytest.approx(0.2 / 1.4 * 100)
+
     def test_parse_atom_selection(self):
         # 0-based ranges and singles to sorted list
         res = parse_index_string("1-3, 5")

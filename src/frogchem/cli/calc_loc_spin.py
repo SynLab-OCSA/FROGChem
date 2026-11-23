@@ -58,9 +58,10 @@ class CalcLocSpin(CLICommand, name='frog-spin'):
 
     category = 'parsing'
     outputs = [
-        Output('table', 'Atomic Spin Populations (<file>)', 'One row per atom: integrated spin and % of the total'),
+        Output('table', 'Atomic Spin Populations (<file>)',
+               'One row per atom: integrated spin, signed % of the total and % of the absolute spin'),
         Output('table', 'Fragment Spin Populations (<file>)',
-               'One row per fragment plus "Rest of system": spin and % of the total',
+               'One row per fragment plus "Rest of system": spin, % of the total and % of the absolute spin',
                when='--fragment/--interactive'),
     ]
     guide = Guide(
@@ -90,8 +91,8 @@ class CalcLocSpin(CLICommand, name='frog-spin'):
             "Not sure of the numbers? Use `frog-spin --interactive` and build the fragments step by step.",
         ],
         expect="""
-            A table with one row per atom: **Spin** (in electrons, α − β) and **% Total**, followed by a
-            *Total* row; with `--fragment` a second table with the fragment sums.
+            A table with one row per atom: **Spin** (in electrons, α − β), **% Total** and **% |Spin|**,
+            followed by a *Total* row; with `--fragment` a second table with the fragment sums.
 
             * The *Total* should be close to the number of unpaired electrons: about **1** for a doublet,
               **2** for a triplet, **3** for a quartet. Small deviations (±0.01–0.02) come from the finite
@@ -99,6 +100,10 @@ class CalcLocSpin(CLICommand, name='frog-spin'):
               `frog-density`) or the grid too coarse.
             * Negative values are normal: they are *spin polarisation* (β excess) on atoms next to the
               spin-carrying centre.
+            * **% Total** is signed (spin / total): it sums to 100 %, so an atom with negative spin gets a
+              negative %, and the others can go above 100 %. With a total close to zero (broken-symmetry
+              singlet) it blows up: read the Spin column instead. **% |Spin|** is |spin| / Σ|spin|, always
+              positive and summing to 100 %: where the spin density sits, whatever its sign.
             * Each grid point is assigned to the **nearest atom** (Voronoi partition), regardless of atom size.
               Numbers are therefore close to, but not the same as, the Mulliken or Löwdin spin populations
               printed by ORCA (e.g. N 0.61 here vs 0.72 Mulliken). Compare trends within the same method,
@@ -158,35 +163,42 @@ class CalcLocSpin(CLICommand, name='frog-spin'):
         total_spin = float(np.sum(atom_integrals))
         print_info(f'Total integrated spin: {total_spin:.4f}')
 
+        abs_total = float(np.sum(np.abs(atom_integrals)))
+
         def pct(value):
             return value / total_spin * 100 if abs(total_spin) > 1e-5 else None
 
+        def pct_abs(abs_value):
+            return abs_value / abs_total * 100 if abs_total > 1e-5 else None
+
         elements = [_element(a['atomic_number']) for a in cube_data['atoms']]
-        atom_rows = [[i, elements[i] if i < len(elements) else '?', float(v), pct(float(v))]
+        atom_rows = [[i, elements[i] if i < len(elements) else '?', float(v), pct(float(v)), pct_abs(abs(float(v)))]
                      for i, v in enumerate(atom_integrals)]
-        atom_rows.append(['Total', '', total_spin, pct(total_spin)])
-        self.output(atom_rows, ['Idx', 'Element', 'Spin', '% Total'],
+        atom_rows.append(['Total', '', total_spin, pct(total_spin), pct_abs(abs_total)])
+        self.output(atom_rows, ['Idx', 'Element', 'Spin', '% Total', '% |Spin|'],
                     title=f'Atomic Spin Populations ({filepath})', floatfmt='.4f')
 
         if args.interactive:
             fragments = self._interactive_fragments(fragments, n_atoms)
 
         if fragments:
-            self.output(self._fragment_rows(fragments, atom_integrals, n_atoms, pct),
-                        ['Fragment', 'Spin', '% Total'],
+            self.output(self._fragment_rows(fragments, atom_integrals, n_atoms, pct, pct_abs),
+                        ['Fragment', 'Spin', '% Total', '% |Spin|'],
                         title=f'Fragment Spin Populations ({filepath})', floatfmt='.4f')
 
     @staticmethod
-    def _fragment_rows(fragments, atom_integrals, n_atoms, pct):
+    def _fragment_rows(fragments, atom_integrals, n_atoms, pct, pct_abs):
+        """Fragment sums; % |Spin| of a fragment is the sum of |spin| of its atoms over Σ|spin|."""
         rows = []
         for name, idxs in fragments.items():
             spin_val = float(np.sum(atom_integrals[idxs]))
-            rows.append([name, spin_val, pct(spin_val)])
+            rows.append([name, spin_val, pct(spin_val), pct_abs(float(np.sum(np.abs(atom_integrals[idxs]))))])
         selected = set().union(*fragments.values())
         rest = [i for i in range(n_atoms) if i not in selected]
         if rest:
             spin_rest = float(np.sum(atom_integrals[rest]))
-            rows.append(['Rest of system', spin_rest, pct(spin_rest)])
+            rows.append(['Rest of system', spin_rest, pct(spin_rest),
+                         pct_abs(float(np.sum(np.abs(atom_integrals[rest]))))])
         return rows
 
     @staticmethod

@@ -18,6 +18,9 @@ $$
 
    The *Total* row is $\sum_A N_A$. `% Total` = $100\,N_A / N_\mathrm{tot}$, left empty when
    $|N_\mathrm{tot}| < 10^{-5}$.
+   `% |Spin|` = $100\,|N_A| / \sum_B |N_B|$: always positive, it sums to 100 % even when some atoms
+   carry negative spin, and stays meaningful when $N_\mathrm{tot} \approx 0$. For a fragment it is
+   $100 \sum_{A \in F} |N_A| / \sum_B |N_B|$.
 4. **Fragments** (`--fragment NAME:0-5,8`, repeatable; or `--interactive`). The 0-based indices are
    parsed with inclusive ranges, and the fragment value is $\sum_{A \in F} N_A$. Atoms not in any fragment are
    summed in *Rest of system*. An index outside the molecule stops the command with an error, whereas in the
