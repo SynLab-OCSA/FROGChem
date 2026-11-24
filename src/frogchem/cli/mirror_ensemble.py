@@ -89,9 +89,6 @@ class MirrorEnsemble(CLICommand, name='frog-mirror'):
             self.saved(out, f"mirrored ensemble ({len(frames)} structure{'s' * (len(frames) != 1)})")
 
 
-def parse_args():
-    return MirrorEnsemble().build_parser().parse_args()
-
 
 def main():
     MirrorEnsemble().main()

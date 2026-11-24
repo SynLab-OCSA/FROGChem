@@ -134,27 +134,10 @@ def test_line_series_with_own_x():
     assert [len(ln.get_xdata()) for ln in ax.get_lines()] == [2, 3]
 
 
-def test_scatter_with_annotations():
-    _, ax = plotter.scatter([0.1, 0.2], [0.3, 0.4], annotate=["p1", "p2"], size=50,
-                            opts=PlotOptions(colors=("green",)))
+def test_scatter_colors():
+    _, ax = plotter.scatter([0.1, 0.2], [0.3, 0.4], size=50, opts=PlotOptions(colors=("green",)))
     assert len(ax.collections) == 1
-    assert [t.get_text() for t in ax.texts] == ["p1", "p2"]
     assert _rgba(ax.collections[0].get_facecolor()[0]) == _rgba("green")
-
-
-def test_grouped_bars():
-    _, ax = plotter.bar(["C0", "C1", "C2"], {"Mulliken": [0.1, -0.2, 0.3], "Löwdin": [0.0, -0.1, 0.2]},
-                        opts=PlotOptions(colors=("red", "blue")))
-    assert len(ax.patches) == 6
-    assert [t.get_text() for t in ax.get_xticklabels()] == ["C0", "C1", "C2"]
-    assert _rgba(ax.patches[0].get_facecolor()) == _rgba("red")
-    assert _rgba(ax.patches[3].get_facecolor()) == _rgba("blue")
-
-
-def test_hist():
-    _, ax = plotter.hist(np.random.default_rng(0).normal(size=200), bins=10, opts=PlotOptions(title="H"))
-    assert len(ax.patches) == 10
-    assert ax.get_title() == "H"
 
 
 def test_heatmap_orientation_ticks_and_colorbar():

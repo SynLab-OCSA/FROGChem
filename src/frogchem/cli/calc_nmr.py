@@ -80,7 +80,6 @@ class CalcNmr(CLICommand, name='frog-nmr'):
     """
     category = 'nmr'
     supports_ensemble = True
-    _auto_ensemble_average = False
     outputs = [
         Output('table', 'Chemical Shifts & Shieldings (<file>)',
                'Per atom: σ_iso, δ (vs --ref or the default reference) and anisotropy (ppm)'),
@@ -761,9 +760,6 @@ class CalcNmr(CLICommand, name='frog-nmr'):
                               title=f"Simulated {nuc_f2}-{nuc_f1} HMBC Correlation Spectrum{suffix}",
                               spectrum_type='HMBC', **traces)
 
-
-def parse_args():
-    return CalcNmr().build_parser().parse_args()
 
 
 def main():

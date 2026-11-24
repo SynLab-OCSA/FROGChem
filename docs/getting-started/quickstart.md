@@ -116,7 +116,6 @@ ratio (85 % ee) at room temperature. `frog-er dg 95 5` does the reverse.
 | buried volume and steric maps of a ligand | `frog-steric` |
 | solvent-accessible / excluded surfaces | `frog-solvent` |
 | final geometries as XYZ, a Supporting-Information file | `frog-xyz`, `frog-si` |
-| replace a substituent in 3D | `frog-substitute` (library: `frog-sub-db`) |
 
 ---
 
@@ -185,5 +184,5 @@ for freq, intensity in sorted(nmr_sim.solve_spin_cluster(nu, J)):
 ## Next steps
 
 * The [User Guide](../user-guide/parsing.md) pages walk through complete workflows (thermochemistry,
-  conformer ensembles, NMR, spectroscopy, geometry, substitution).
+  conformer ensembles, NMR, spectroscopy, geometry).
 * The *Command-Line Interface* pages document every tool and every option.

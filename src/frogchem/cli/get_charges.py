@@ -19,7 +19,6 @@ class GetCharges(CLICommand, name='frog-charges'):
 
     category = 'parsing'
     supports_ensemble = True
-    _auto_ensemble_average = False
     outputs = [
         Output('table', 'Charges (<type>)', 'One row per input file: element and charge (e) of each selected atom'),
         ENSEMBLE_WEIGHTS,
@@ -177,9 +176,6 @@ class GetCharges(CLICommand, name='frog-charges'):
         self.output(avg_rows, avg_headers,
                     title=f'Ensemble-Averaged Charges ({_LABELS[args.type]}, Boltzmann weighted)')
 
-
-def parse_args():
-    return GetCharges().build_parser().parse_args()
 
 
 def main():

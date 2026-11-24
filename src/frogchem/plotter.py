@@ -25,7 +25,7 @@ from frogchem.printer import print_saved
 __all__ = [
     "DEFAULT_DPI", "DEFAULT_FIGSIZE", "FIG_FORMATS", "LINESTYLES", "STYLE",
     "PlotOptions", "rc_params", "style", "new_figure", "finish", "series_colors", "get_cmap",
-    "energy_label", "line", "scatter", "label_points", "bar", "hist", "heatmap", "contour", "colorbar",
+    "energy_label", "line", "scatter", "label_points", "heatmap", "contour", "colorbar",
     "tight_layout", "save_figure", "resolve_path", "show_figures", "close",
 ]
 
@@ -77,10 +77,7 @@ class PlotOptions:
     cmap: Optional[str] = None
     linewidth: Optional[float] = None
     linestyle: Optional[str] = None
-    marker: Optional[str] = None
-    alpha: Optional[float] = None
     legend: Optional[bool] = None
-    legend_loc: Optional[str] = None
     grid: Optional[bool] = None
     figsize: Optional[Tuple[float, float]] = None
     font_size: Optional[float] = None
@@ -174,10 +171,7 @@ def get_cmap(name: str):
         return mpl.colormaps[name]
     except KeyError:
         pass
-    try:
-        import seaborn  # noqa: F401  (registers its colormaps in matplotlib)
-    except ImportError:
-        pass
+    import seaborn  # noqa: F401  (registers its colormaps in matplotlib)
     try:
         return mpl.colormaps[name]
     except KeyError:
@@ -216,7 +210,7 @@ def finish(ax, opts: Optional[PlotOptions] = None, handles=None, **legend_kwargs
         handles = ax.get_legend_handles_labels()[0]
     show_legend = opts.legend if opts.legend is not None else bool(handles)
     if show_legend and handles:
-        legend_kwargs.setdefault("loc", opts.legend_loc or "best")
+        legend_kwargs.setdefault("loc", "best")
         ax.legend(handles=handles, **legend_kwargs)
     elif not show_legend and ax.get_legend() is not None:
         ax.get_legend().remove()
@@ -227,8 +221,7 @@ def finish(ax, opts: Optional[PlotOptions] = None, handles=None, **legend_kwargs
 _ALIASES = {"c": "color", "lw": "linewidth", "ls": "linestyle", "ec": "edgecolor", "fc": "facecolor"}
 
 
-def _kwargs(opts: PlotOptions, defaults: Mapping[str, Any], color=None, lines: bool = True,
-            marker: bool = True) -> dict:
+def _kwargs(opts: PlotOptions, defaults: Mapping[str, Any], color=None, lines: bool = True) -> dict:
     """Call defaults overridden by the options set in `opts`."""
     kw = {_ALIASES.get(k, k): v for k, v in defaults.items()}
     if color is not None:
@@ -237,10 +230,6 @@ def _kwargs(opts: PlotOptions, defaults: Mapping[str, Any], color=None, lines: b
         kw["linewidth"] = opts.linewidth
     if lines and opts.linestyle:
         kw["linestyle"] = LINESTYLES.get(opts.linestyle, opts.linestyle)
-    if marker and opts.marker:
-        kw["marker"] = opts.marker
-    if opts.alpha is not None:
-        kw["alpha"] = opts.alpha
     return kw
 
 
@@ -306,12 +295,9 @@ def line(x, ys, labels=None, fill: bool = False, fill_alpha: float = 0.15, inver
     return fig, ax
 
 
-def scatter(x, y, labels=None, annotate: Optional[Sequence[str]] = None, size=None, ax=None,
+def scatter(x, y, labels=None, size=None, ax=None,
             opts: Optional[PlotOptions] = None, **kwargs):
-    """Scatter plot of one or more series (same input shapes as `line`). Returns (fig, ax).
-
-    annotate: one text per point (single series only), drawn next to each point.
-    """
+    """Scatter plot of one or more series (same input shapes as `line`). Returns (fig, ax)."""
     opts = _opts(opts)
     with style(opts):
         fig, ax = _axes(ax, opts)
@@ -322,11 +308,6 @@ def scatter(x, y, labels=None, annotate: Optional[Sequence[str]] = None, size=No
             if size is not None:
                 kw["s"] = size
             ax.scatter(xi, yi, label=label, **kw)
-        if annotate is not None:
-            for text, xi, yi in zip(annotate, np.atleast_1d(x), np.atleast_1d(y)):
-                ax.annotate(text, (xi, yi), xytext=(5, 4), textcoords="offset points",
-                            fontsize="small", weight="bold",
-                            bbox=dict(facecolor="white", alpha=0.6, edgecolor="none", pad=0.5))
         finish(ax, opts)
     return fig, ax
 
@@ -406,51 +387,6 @@ def label_points(ax, x, y, texts: Sequence[str], fontsize="medium", marker_size=
     ax.figure.canvas.mpl_connect("resize_event", place)
     _after_layout(ax.figure, place)                          # tight layout in save_figure moves the axes
     return anns
-
-
-def bar(categories, values, labels=None, horizontal: bool = False, width: float = 0.8, ax=None,
-        opts: Optional[PlotOptions] = None, **kwargs):
-    """Bar chart; several series ({label: values} or a sequence) are grouped side by side.
-
-    Returns (fig, ax).
-    """
-    opts = _opts(opts)
-    with style(opts):
-        fig, ax = _axes(ax, opts)
-        series = _series(values, labels)
-        colors = _color_list(opts, len(series), kwargs)
-        pos = np.arange(len(categories), dtype=float)
-        w = width / len(series)
-        for i, ((label, v), color) in enumerate(zip(series, colors)):
-            kw = _kwargs(opts, kwargs, color=color, lines=False, marker=False)
-            offset = pos - width / 2 + w * (i + 0.5)
-            if horizontal:
-                ax.barh(offset, v, height=w, label=label, **kw)
-            else:
-                ax.bar(offset, v, width=w, label=label, **kw)
-        if horizontal:
-            ax.set_yticks(pos, [str(c) for c in categories])
-        else:
-            ax.set_xticks(pos, [str(c) for c in categories])
-        finish(ax, opts)
-    return fig, ax
-
-
-def hist(values, bins="auto", density: bool = False, labels=None, ax=None,
-         opts: Optional[PlotOptions] = None, **kwargs):
-    """Histogram of one or more data sets (several are overlaid, semi-transparent). Returns (fig, ax)."""
-    opts = _opts(opts)
-    with style(opts):
-        fig, ax = _axes(ax, opts)
-        series = _series(values, labels)
-        colors = _color_list(opts, len(series), kwargs)
-        if len(series) > 1:
-            kwargs.setdefault("alpha", 0.6)
-        for (label, v), color in zip(series, colors):
-            kw = _kwargs(opts, kwargs, color=color, marker=False)
-            ax.hist(np.asarray(v, dtype=float), bins=bins, density=density, label=label, **kw)
-        finish(ax, opts)
-    return fig, ax
 
 
 def colorbar(mappable, ax=None, cax=None, label: Optional[str] = None):

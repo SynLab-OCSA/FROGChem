@@ -88,9 +88,6 @@ class WriteXYZ(CLICommand, name='frog-xyz'):
             raise ParseError(f'No geometry written for {len(failed)} file(s): {", ".join(failed)}')
 
 
-def parse_args():
-    return WriteXYZ().build_parser().parse_args()
-
 
 def main():
     WriteXYZ().main()

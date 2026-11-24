@@ -166,5 +166,4 @@ examples:
       Charges of atoms 0, 1 and 2
 ```
 
-Regenerate README and the per-command pages `docs/cli/<command>.md` with `python generate_readme.py`
-(`--docs-only` leaves README untouched); re-run the real examples with `python docs/build_examples.py`.
+Re-run the real examples with `python docs/build_examples.py`.

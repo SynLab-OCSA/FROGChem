@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Plot reaction profiles from formatted input files or JSON.
+"""Plot reaction profiles from YAML input files.
 
 Generates publication-quality 2D reaction coordinate diagrams with Bezier curves,
-customizable markers, and multi-step annotations. Supports both formatted TXT files
-and JSON specifications.
+customizable markers, and multi-step annotations.
 """
 
 from __future__ import annotations
@@ -35,7 +34,7 @@ def _load_optional_json(path_str: Optional[str], what: str) -> Optional[Any]:
 
 
 class ReactionProfile(CLICommand, name='frog-profile'):
-    """Plot reaction energy profiles from TXT, YAML or JSON input files.
+    """Plot reaction energy profiles from YAML input files.
 
     Draws Bezier-curve reaction coordinate diagrams with point markers, energy labels,
     segment annotations, an optional secondary y-axis and section brackets. One figure
@@ -46,9 +45,6 @@ class ReactionProfile(CLICommand, name='frog-profile'):
     outputs = [
         Output('plot', '<stem>_profile.png', 'Reaction profile, next to the input (or --out-dir); '
                                              '-o sets the path (prefix <output>_<stem> with several inputs)'),
-        Output('plot', '<directory>/Rxn_profile.png', 'Legacy TXT inputs with "save: true" (unless -o is given)',
-               when='save: true'),
-        Output('file', '<directory>/input.txt', 'Copy of the legacy TXT input', when='save: true'),
     ]
     guide = Guide(
         why="""
@@ -59,16 +55,10 @@ class ReactionProfile(CLICommand, name='frog-profile'):
             paper or a talk.
             """,
         needs="""
-            A small text file with the **relative energies** (usually ΔG in kcal/mol, e.g. from
-            `frog-rrho` or `frog-autoprofile`) in one of three formats (examples in the Reaction
-            Profiles user guide):
-
-            * **YAML** (`.yaml`, recommended): `steps:` (state names), `pathways:` (each with `name` and
-              `energies`, optionally `branch_at`, `color`, `style`), plus options such as `title` and
-              `label_points`.
-            * **TXT**: sections `--# PES` (one line of `;`-separated energies per pathway), `--# LABELS`
-              and `--# GRAPHS` (`key : value` options).
-            * **JSON**: `{"Path A": [0.0, 18.4, -3.2]}` or `{"pathways": {...}}`.
+            A small YAML file with the **relative energies** (usually ΔG in kcal/mol, e.g. from
+            `frog-rrho` or `frog-autoprofile`): `steps:` (state names), `pathways:` (each with `name`
+            and `energies`, optionally `branch_at`, `color`, `style`), plus options such as `title` and
+            `label_points` (examples in the Reaction Profiles user guide).
 
             The numbers are plotted as given: no unit conversion is done.
             """,
@@ -81,36 +71,32 @@ class ReactionProfile(CLICommand, name='frog-profile'):
             "`--point-type bar` (horizontal bars instead of hollow dots), `--curviness 0` (straight lines).",
             "Add the TS barrier to the legend with `--legend-barriers`; extra options can come from JSON "
             "files (`--config`, `--annotations`, `--point-labels`, `--secondary`, `--x`).",
-            "No input yet? `frog-profile --interactive` asks for the data in the terminal and writes the input file for you.",
+            "No input yet? `frog-profile --gui` opens a browser editor that writes the YAML file for you.",
         ],
         expect="""
             Only a figure (nothing is printed on stdout): the state names along the x axis, each pathway
             as a smooth curve through its states (a legend when there are several pathways), and the
-            energy values written at the points you select with `label_points` (YAML) or `labelpoint`
-            (TXT), typically the transition states. By default no y-axis frame is drawn (`axes` option).
+            energy values written at the points you select with `label_points`, typically the transition states. By default no y-axis frame is drawn (`axes` option).
             Example: the model input of the user guide shows 18.4 at TS1 and 12.1/15.8 at TS2 for the two paths.
 
             * Check the printed values against your table: they are the numbers of the input, rounded to
               one decimal.
-            * Branches (`branch_at: INT` in YAML, `@INT:` in TXT) start at the named state; a branch that
-              starts at the first state means the name was not found among the `steps`/labels.
-            * Several inputs with the same stem (`pes.yaml`, `pes.txt`) write the **same**
+            * Branches (`branch_at: INT`) start at the named state; a branch that starts at the first
+              state means the name was not found among the `steps`.
+            * Several inputs with the same stem (`pes.yaml`, `pes.yml`) write the **same**
               `pes_profile.png`: the last one overwrites the others. Use different names or `-o prefix`.
-            * Legacy TXT files with `save : true` in `--# GRAPHS` are saved as `<directory>/Rxn_profile.png`
-              (directory from the `directory` option, default `reaction`) together with a copy `input.txt`,
-              unless `-o` is given.
             * `--gui` needs the optional `streamlit` package.
             """,
     )
     examples = [
         ('frog-profile pes.yaml', 'Save pes_profile.png next to pes.yaml'),
-        ('frog-profile pes.txt -o figure1.svg --style presentation', 'SVG with the presentation preset'),
-        ('frog-profile path_a.json path_b.json -o profiles --fig-format pdf --show',
+        ('frog-profile pes.yaml -o figure1.svg --style presentation', 'SVG with the presentation preset'),
+        ('frog-profile path_a.yaml path_b.yaml -o profiles --fig-format pdf --show',
          'profiles_path_a.pdf and profiles_path_b.pdf, then open the plot windows'),
     ]
 
     def setup_args(self, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument('file', nargs='*', default=[], help='Input files (.txt, .yaml or .json)')
+        parser.add_argument('file', nargs='*', default=[], help='Input YAML files')
         parser.add_argument('--style', default='default', choices=['default', 'presentation', 'straight'],
                             help='Plot style preset')
         parser.add_argument('--point-type', choices=['hollow', 'bar', 'dot', '.'], default=None,
@@ -126,7 +112,6 @@ class ReactionProfile(CLICommand, name='frog-profile'):
                             help='Append the TS barrier (kcal/mol) to the legend labels')
         parser.add_argument('--no-legend-barriers', dest='legend_barriers', action='store_false',
                             help='Do not append TS barriers to the legend labels')
-        self.add_interactive_arg(parser, help='Launch the terminal wizard to build an input file')
         parser.add_argument('--gui', action='store_true', help='Launch the web GUI (Streamlit) in the browser')
         self.add_output_arg(parser, help='Plot path, or prefix with several inputs '
                                          '(extension overrides --fig-format)')
@@ -134,11 +119,6 @@ class ReactionProfile(CLICommand, name='frog-profile'):
         self.add_plot_args(parser, optional=False, style=False)
 
     def run(self, args: argparse.Namespace) -> None:
-        if args.interactive:
-            from frogchem.reaction_plotter.wizard import run_tui_wizard
-            run_tui_wizard()
-            return
-
         if args.gui:
             import subprocess
             import sys
@@ -152,7 +132,7 @@ class ReactionProfile(CLICommand, name='frog-profile'):
             return
 
         if not args.file:
-            raise InputError("No input files given: pass file path(s), or use --interactive / --gui")
+            raise InputError("No input files given: pass file path(s), or use --gui")
 
         files = self.require_files(args.file)
         import matplotlib as mpl
@@ -189,15 +169,11 @@ class ReactionProfile(CLICommand, name='frog-profile'):
         for p in files:
             print_info(f"Processing {p}")
             try:
-                analyzer = ReactionProfileAnalyzer(str(p), auto_plot=False)
+                analyzer = ReactionProfileAnalyzer(str(p))
             except (FileNotFoundError, ValueError) as e:
                 raise InputError(f"{p}: {e}") from e
 
-            legacy_dir = analyzer.config.save and not args.output
-            if legacy_dir:
-                default = Path(analyzer.config.directory) / 'Rxn_profile'
-            else:
-                default = self.derived_path(p, 'profile', args.fig_format)
+            default = self.derived_path(p, 'profile', args.fig_format)
             path = self.plot_path(default, tag=p.stem if len(files) > 1 and args.output else None)
 
             with mpl.rc_context(own_style):
@@ -209,17 +185,7 @@ class ReactionProfile(CLICommand, name='frog-profile'):
                     )
                 except (FileNotFoundError, ValueError) as e:
                     raise InputError(f"{p}: {e}") from e
-                if legacy_dir and analyzer.file_content:
-                    path.parent.mkdir(parents=True, exist_ok=True)
-                    copy = path.parent / 'input.txt'
-                    copy.write_text(analyzer.file_content, encoding='utf-8')
-                    self.saved(copy, 'input copy')
                 self.save_figure(fig, path, **analyzer.savefig_kwargs)
-
-
-# backward compat
-def parse_args():
-    return ReactionProfile().build_parser().parse_args()
 
 
 def main():

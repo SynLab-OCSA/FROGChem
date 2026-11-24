@@ -21,7 +21,7 @@ pathways:
 """, encoding="utf-8")
 
     with caplog.at_level(logging.WARNING):
-        analyzer = ReactionProfileAnalyzer(str(yaml_file), auto_plot=False)
+        analyzer = ReactionProfileAnalyzer(str(yaml_file))
 
     assert analyzer.point_labels["Path1"] == ["A", "TS1", "C"]
     assert "Z" in caplog.text

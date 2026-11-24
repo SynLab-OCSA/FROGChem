@@ -150,9 +150,6 @@ class SortEZ(CLICommand, name='frog-sort-ez'):
                     self.saved(out, f"{label} ensemble ({len(ids)} structure{'s' * (len(ids) != 1)})")
 
 
-def parse_args():
-    return SortEZ().build_parser().parse_args()
-
 
 def main():
     SortEZ().main()

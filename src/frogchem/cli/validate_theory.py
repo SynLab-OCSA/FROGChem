@@ -17,6 +17,7 @@ from dftd3.interface import (
 )
 from dftd4.interface import DampingParam as D4Param
 
+from frogchem.basis_exchange import resolve_basis_name
 from frogchem.filetypes import load_structures
 from frogchem.printer import print_error, print_info, print_table, print_title
 
@@ -47,9 +48,7 @@ def check_functional_libxc(func_name: str) -> Tuple[bool, List[str]]:
 
 def check_basis_set(basis_name: str, elements: List[str]) -> Tuple[bool, Optional[str], List[str]]:
     """Verify if a basis set exists in BSE and covers all given elements."""
-    all_bases = bse.get_all_basis_names()
-    lookup = {b.lower(): b for b in all_bases}
-    resolved = lookup.get(basis_name.strip().lower())
+    resolved = resolve_basis_name(basis_name.strip())
 
     if resolved is None:
         return False, None, elements

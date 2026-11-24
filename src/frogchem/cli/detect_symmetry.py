@@ -197,9 +197,6 @@ framework only.
             raise InputError(f"{len(failed)} of {len(files)} file(s) could not be read: {', '.join(failed)}")
 
 
-def parse_args():
-    return DetectSymmetry().build_parser().parse_args()
-
 def main():
     DetectSymmetry().main()
 

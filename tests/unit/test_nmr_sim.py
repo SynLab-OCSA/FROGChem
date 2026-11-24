@@ -13,7 +13,6 @@ from frogchem.nmr import (
     get_nmr_equivalencies,
     get_nucleus_spin,
     get_periodictable_spin,
-    get_spin_multiplicity,
     is_nucleus_decoupled,
     is_quadrupolar,
     load_nucleus_database,
@@ -22,7 +21,6 @@ from frogchem.nmr import (
     load_nucleus_database,
     parse_spin,
     parse_spins_arg,
-    set_nucleus_spin,
     symmetrize_nmr_data,
     NUCLEUS_DATA,
 )
@@ -409,12 +407,6 @@ def test_spin_helpers():
     assert is_quadrupolar('33S')
     assert is_quadrupolar('2H')
 
-    # Multiplicity 2nI + 1
-    assert get_spin_multiplicity(0.5, 1) == 2  # doublet
-    assert get_spin_multiplicity(0.5, 3) == 4  # quartet
-    assert get_spin_multiplicity(1.0, 1) == 3  # CDCl3 triplet in 13C
-    assert get_spin_multiplicity(2.5, 1) == 6  # 17O sextet
-
 
 def test_solve_spin_cluster_oxygen17_equivalent():
     """Two magnetically equivalent Oxygen-17 spins (I = 5/2) should collapse
@@ -520,11 +512,7 @@ def test_dynamic_nuclei_database_and_spin_overrides(tmp_path):
     assert np.isclose(spins_json['17O'], 2.5)
     assert np.isclose(spins_json['33S'], 1.5)
 
-    # 5. Dynamic set_nucleus_spin and custom_spins priority
-    set_nucleus_spin('CustomNuc', '7/2')
-    assert np.isclose(get_nucleus_spin('CustomNuc'), 3.5)
-
-    # custom_spins override takes precedence
+    # 5. custom_spins override takes precedence
     override_val = get_nucleus_spin('1H', custom_spins={'1H': 1.0})
     assert np.isclose(override_val, 1.0)
 
@@ -536,7 +524,7 @@ def test_orca_detected_isotopes_parsing():
         pytest.skip("files/nmr.out not found")
     calc = Calculation('files/nmr.out')
     assert calc.nmr is not None
-    isotopes = calc.nmr.get_isotopes()
+    isotopes = calc.nmr.atom_isotopes
     assert len(isotopes) in (39, 172)
     if len(isotopes) == 172:
         assert isotopes[0] == '15N'

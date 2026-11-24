@@ -20,7 +20,6 @@ Output, file and plot conventions are described in docs/cli/conventions.md.
 import argparse
 import contextlib
 import inspect
-import json
 import logging
 import shutil
 import sys
@@ -58,8 +57,6 @@ CATEGORIES = {
     'spectroscopy': ('Spectroscopy & Grid',
                      'These commands process electronic excited states, UV-Vis/ECD spectra, volumetric '
                      'grids, and real-space densities.'),
-    'substituter': ('Fragment Substitution',
-                    'These commands automate 3D substituent modification and manage the fragment library.'),
 }
 
 OUTPUT_KINDS = ('table', 'file', 'plot')
@@ -86,7 +83,7 @@ class Output:
 
 @dataclass(frozen=True)
 class Guide:
-    """Plain-language user guide of a command, rendered in the docs (generate_readme.py).
+    """Plain-language user guide of a command, rendered in the docs.
 
     Written for users who run quantum-chemistry calculations only occasionally.
     Every field is Markdown.
@@ -179,7 +176,6 @@ class _SpacingAction(argparse.Action):
 class CLICommand:
     """Base class for CLI tools. Subclasses auto-register via __init_subclass__."""
 
-    description: str = ''
     name: str = ''
     category: str = ''
     #: Adds -c/--checkpoint, --read-boltzmann, -e, -T, --individual and Boltzmann averaging.
@@ -187,7 +183,7 @@ class CLICommand:
     #: Adds --format and --table-file. Set False for commands that print no tables.
     has_tables: bool = True
     #: Append an ensemble-average row to every multi-row table (only with supports_ensemble).
-    _auto_ensemble_average: bool = True
+    _auto_ensemble_average: bool = False
     outputs: Sequence[Output] = ()
     examples: Sequence[tuple[str, str]] = ()
     #: Plain-language guide (why / what you need / how / what to expect) shown in the docs.
@@ -212,14 +208,14 @@ class CLICommand:
     @classmethod
     def summary(cls) -> str:
         """First line of the description: used by `frog` and the docs."""
-        text = (cls.description or cls.__doc__ or '').strip()
+        text = (cls.__doc__ or '').strip()
         return text.splitlines()[0].strip() if text else ''
 
     def build_parser(self) -> argparse.ArgumentParser:
         self._plot_mode = None
         parser = argparse.ArgumentParser(
             prog=self.name,
-            description=reflow(inspect.cleandoc(self.description or self.__doc__ or ''), help_width()),
+            description=reflow(inspect.cleandoc(self.__doc__ or ''), help_width()),
             formatter_class=HelpFormatter,
         )
         parser.add_argument('-v', '--verbose', action='store_true', help='Enable debug output')
@@ -494,14 +490,6 @@ class CLICommand:
         """Report a written file on stderr."""
         print_saved(path, kind)
 
-    # --------------------------------------------------------------- ensemble
-    def load_populations(self) -> dict[int, float]:
-        """Load Boltzmann populations from the checkpoint specified in --checkpoint."""
-        ckpt = getattr(self, '_checkpoint', None)
-        if not ckpt:
-            return {}
-        from frogchem.ensemble import load_checkpoint_populations
-        return load_checkpoint_populations(ckpt, protocol=getattr(self, '_read_boltzmann', None))
 
     def build_ensemble(self, items, **kwargs):
         """frogchem.ensemble.build_ensemble with the command's checkpoint, protocol, -e and -T."""
@@ -511,12 +499,6 @@ class CLICommand:
         kwargs.setdefault('temp', getattr(self, '_temp', 298.15))
         return build_ensemble(items, self._checkpoint, **kwargs)
 
-    def get_ensemble_weights(self, file_labels: Sequence[str]) -> Optional[dict[str, float]]:
-        """Compute normalized Boltzmann weights for a sequence of file labels."""
-        if not getattr(self, '_checkpoint', None):
-            return None
-        ens = self.build_ensemble(file_labels)
-        return {e.file_path: e.weight for e in ens.entries}
 
     def output_weights(self, ens) -> None:
         """The 'Ensemble Weights' table, identical for every ensemble command."""
@@ -600,7 +582,6 @@ class CLICommand:
         self._read_boltzmann = getattr(args, 'read_boltzmann', None)
         self._energy_term = getattr(args, 'energy_term', 'G')
         self._temp = getattr(args, 'temp', 298.15)
-        self._individual = getattr(args, 'individual', False)
         self._ensemble_weights_printed = False
         self._tables = []
 
@@ -617,7 +598,6 @@ class CLICommand:
             # are restored afterwards (library callers and tests keep their own settings)
             plot_style = plotter.style(self.plot_opts)
 
-        self._parse_errors = []
         print_title(self.name)
         exit_code = EXIT_SUCCESS
         try:
@@ -654,8 +634,6 @@ class CLICommand:
             from frogchem.plotter import show_figures
             show_figures()
 
-        if self._parse_errors:
-            print(json.dumps(self._parse_errors, indent=2), file=sys.stderr)
         if exit_code:
             sys.exit(exit_code)
 
@@ -672,7 +650,6 @@ class CLICommand:
                 print_error(f"File not found: {f}", exit_code=EXIT_INPUT_ERROR)
             paths.append(p)
         return paths
-
 
 
 COMPRESSION_SUFFIXES = ('.gz', '.bz2', '.xz')
@@ -774,8 +751,6 @@ _CLI_MODULES = {
     'frog-spin': 'frogchem.cli.calc_loc_spin',
     'frog-charges': 'frogchem.cli.get_charges',
     'frog-nbo': 'frogchem.cli.nbo_parser',
-    'frog-substitute': 'frogchem.cli.substitute_fragment',
-    'frog-sub-db': 'frogchem.cli.manage_sub_db',
     'frog-cie': 'frogchem.cli.cie_plot',
     'frog-md': 'frogchem.cli.md_analysis',
     'frog-er': 'frogchem.cli.calc_er',

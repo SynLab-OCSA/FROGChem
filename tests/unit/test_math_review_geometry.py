@@ -251,23 +251,3 @@ def test_ses_single_atom_volume_matches_vdw_sphere():
     phi, axes, _ = compute_ses(['C'], np.zeros((1, 3)), spacing=0.1)
     vol = np.sum(phi < 0) * np.prod(_axes_spacing(axes))
     assert abs(vol / (4 / 3 * np.pi * rv ** 3) - 1) < 0.03
-
-
-# ---------------------------------------------------------------- substituter
-
-def test_attach_fragment_points_away_from_core():
-    ase = pytest.importorskip("ase")
-    from frogchem.substituter.builder import attach_fragment
-    mol = ase.Atoms('CHHHH', positions=[[0, 0, 0], [1.09, 0, 0], [-0.36, 1.03, 0],
-                                        [-0.36, -0.51, 0.89], [-0.36, -0.51, -0.89]])
-    frag = ase.Atoms('HCHHH', positions=[[-1.09, 0, 0], [0, 0, 0], [0.36, 1.03, 0],
-                                         [0.36, -0.51, 0.89], [0.36, -0.51, -0.89]])
-    new, added, (a, b) = attach_fragment(mol, frag, (1, 0), (0, 1), n_rotations=12, clash_thresh=0.5)
-    p = new.positions
-    for h in added:
-        if h == b:
-            continue
-        u, v = p[a] - p[b], p[h] - p[b]
-        ang = np.degrees(np.arccos(u @ v / np.linalg.norm(u) / np.linalg.norm(v)))
-        assert 105.0 < ang < 114.0  # was 70.7 deg (fragment inverted)
-    assert np.isclose(np.linalg.norm(p[a] - p[b]), 1.54)

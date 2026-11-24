@@ -224,9 +224,6 @@ and octants. With -m, a StericRender SVG steric map is written for each input.
                               "(on macOS: brew install cairo)")
 
 
-def parse_args():
-    return CalcSteric().build_parser().parse_args()
-
 def main():
     CalcSteric().main()
 

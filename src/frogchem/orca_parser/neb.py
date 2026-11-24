@@ -1,6 +1,6 @@
 import numpy as np
 
-_HARTREE_TO_KCAL = 627.5096080305927
+from frogchem.chemistry import HARTREE_TO_KCAL as _HARTREE_TO_KCAL
 
 
 def _numeric_rows(block: str) -> np.ndarray:

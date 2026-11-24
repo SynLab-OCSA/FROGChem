@@ -98,9 +98,6 @@ class CalcEr(CLICommand, name='frog-er'):
             self.output(data, headers=headers, title="ΔG from Ratio", floatfmt=".3f")
 
 
-def parse_args():
-    return CalcEr().build_parser().parse_args()
-
 
 def main():
     CalcEr().main()

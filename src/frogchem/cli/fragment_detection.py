@@ -106,9 +106,6 @@ XYZ file.
                         title=f"Fragments ({fname})")
 
 
-def parse_args():
-    return FragmentDetection().build_parser().parse_args()
-
 
 def main():
     FragmentDetection().main()

@@ -218,24 +218,3 @@ class TestReadXYZMixedFrames:
             read_xyz(str(f))
 
 
-class TestXyzToRdkitMol:
-    WATER = "3\nwater\nO 0.0 0.0 0.0\nH 0.0 0.0 0.96\nH 0.93 0.0 -0.24\n"
-
-    def test_multi_xyz_uses_first_frame(self, tmp_path):
-        pytest.importorskip("rdkit")
-        from frogchem.io import xyz_to_rdkit_mol
-        f = tmp_path / "multi.xyz"
-        f.write_text(self.WATER + self.WATER.replace("water", "water 2"))
-        mol = xyz_to_rdkit_mol(str(f))
-        assert mol.GetNumAtoms() == 3
-        assert [a.GetSymbol() for a in mol.GetAtoms()] == ["O", "H", "H"]
-
-    def test_frame_selection_and_positions(self, tmp_path):
-        pytest.importorskip("rdkit")
-        from frogchem.io import xyz_to_rdkit_mol
-        f = tmp_path / "multi.xyz"
-        f.write_text(self.WATER + "2\nH2\nH 0.0 0.0 0.0\nH 0.74 0.0 0.0\n")
-        mol = xyz_to_rdkit_mol(str(f), frame=1)
-        assert mol.GetNumAtoms() == 2
-        pos = mol.GetConformer().GetAtomPosition(1)
-        assert (pos.x, pos.y, pos.z) == pytest.approx((0.74, 0.0, 0.0))

@@ -127,7 +127,6 @@ user-guide/nmr
 user-guide/reaction_profiles
 user-guide/spectroscopy
 user-guide/geometry
-user-guide/substituter
 user-guide/density_cubes
 ```
 
@@ -159,7 +158,6 @@ api/thermo
 api/ensemble
 api/nmr
 api/reaction_plotter
-api/substituter
 api/geometry
 api/io
 ```

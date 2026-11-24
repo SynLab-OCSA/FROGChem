@@ -53,6 +53,8 @@ dependencies = [
     "mdtraj",
     "pyyaml",
     "basis_set_exchange",
+    "dftd3",
+    "dftd4",
 ]
 
 [project.optional-dependencies]
@@ -103,8 +105,6 @@ frog-xyz = "frogchem.cli.write_xyz:main"
 frog-spin = "frogchem.cli.calc_loc_spin:main"
 frog-charges = "frogchem.cli.get_charges:main"
 frog-nbo = "frogchem.cli.nbo_parser:main"
-frog-substitute = "frogchem.cli.substitute_fragment:main"
-frog-sub-db = "frogchem.cli.manage_sub_db:main"
 frog-cie = "frogchem.cli.cie_plot:main"
 frog-md = "frogchem.cli.md_analysis:main"
 frog-er = "frogchem.cli.calc_er:main"
@@ -116,7 +116,7 @@ frog-nmr = "frogchem.cli.calc_nmr:main"
 frog-nmr-equiv = "frogchem.cli.nmr_equiv:main"
 
 [tool.pyright]
-pythonVersion = "3.9"
+pythonVersion = "3.11"
 typeCheckingMode = "basic"
 include = ["src/frogchem"]
 exclude = ["**/__pycache__", "**/node_modules"]

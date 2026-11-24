@@ -7,7 +7,6 @@ CSV serialization, and centralized session state initialization.
 from __future__ import annotations
 
 import re
-import tempfile
 from typing import Any
 
 import numpy as np
@@ -15,14 +14,6 @@ import pandas as pd
 import streamlit as st
 
 from frogchem.reaction_plotter.profile import ReactionProfileAnalyzer
-
-
-def safe_rerun() -> None:
-    """Trigger a rerun compatible with both newer and older Streamlit versions."""
-    if hasattr(st, "rerun"):
-        st.rerun()
-    elif hasattr(st, "experimental_rerun"):
-        st.experimental_rerun()
 
 
 def compute_x_coords(n_steps: int, has_photo: bool, photo_step: int = 0) -> list[int]:
@@ -98,8 +89,6 @@ def auto_detect_ts(df: pd.DataFrame, path_cols: list[str]) -> list[bool]:
     return is_ts
 
 
-auto_detect_peaks = auto_detect_ts
-
 
 def build_dataframe_from_preset(preset: dict[str, Any]) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     """Construct DataFrame and pathway metadata from preset dict."""
@@ -147,14 +136,9 @@ def build_dataframe_from_preset(preset: dict[str, Any]) -> tuple[pd.DataFrame, l
     return df, path_meta
 
 
-def load_file_into_preset(content_str: str, filename: str = "input.txt") -> dict[str, Any]:
-    """Convert an existing input (.txt or .yaml) content into preset dict format."""
-    suffix = ".yaml" if filename.lower().endswith((".yaml", ".yml")) else ".txt"
-    with tempfile.NamedTemporaryFile("w+", suffix=suffix, delete=False) as tmp:
-        tmp.write(content_str)
-        tmp_path = tmp.name
-
-    analyzer = ReactionProfileAnalyzer(tmp_path, auto_plot=False)
+def load_file_into_preset(content_str: str) -> dict[str, Any]:
+    """Convert an existing YAML input into preset dict format."""
+    analyzer = ReactionProfileAnalyzer(content=content_str)
     path_names = list(analyzer.energy_data.keys())
     max_len = max(len(v) for v in analyzer.energy_data.values()) if analyzer.energy_data else 1
 

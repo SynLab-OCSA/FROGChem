@@ -198,3 +198,8 @@ scripts/test.py
 # local only
 AGENTS.md
 docker-compose.yml
+
+# Substituter, developed separately
+_substituter/
+tests/data/gaussian_ref/runs/
+src/frogchem/reaction_plotter/gui_config.lock

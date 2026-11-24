@@ -246,9 +246,6 @@ class MdAnalysis(CLICommand, name='frog-md'):
         self.save_figure(fig, self.plot_path('analysis', tag='summary'))
 
 
-def parse_args():
-    return MdAnalysis().build_parser().parse_args()
-
 
 def main():
     MdAnalysis().main()

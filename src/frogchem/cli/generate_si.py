@@ -136,9 +136,6 @@ class GenerateSI(CLICommand, name='frog-si'):
         return '\n'.join(lines) + "\n\n---\n\n"
 
 
-def parse_args():
-    return GenerateSI().build_parser().parse_args()
-
 
 def main():
     GenerateSI().main()

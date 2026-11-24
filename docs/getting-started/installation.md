@@ -41,16 +41,7 @@ frog-rrho --help     # options, outputs and examples of one tool
 If `frog` is "command not found", the environment where you installed it is not active
 (`conda activate frog`).
 
-## 3. Optional: other geometry optimisers for `frog-substitute`
-
-`frog-substitute --method` chooses how the new substituent is relaxed:
-
-| `--method` | What it uses | Extra installation |
-|---|---|---|
-| `rdkit` (default) | RDKit force field | none |
-| `aimnet` | AIMNet2 neural-network potential | none (installed with FROG) |
-| `mace` | MACE-OFF neural-network potential | `pip install mace-torch` |
-| `xtb` | — | not available yet (the option exists but stops with an error) |
+## 3. Optional: web GUI
 
 The interactive web GUI of the reaction plotter additionally needs `pip install streamlit`.
 
@@ -60,10 +51,7 @@ The documentation is built with **Sphinx** (MyST Markdown, Read-the-Docs theme):
 
 ```bash
 pip install -r docs/requirements.txt
-python generate_readme.py                 # regenerate README.md and docs/cli/*.md from the CLI code
 sphinx-build -b html docs docs/_build/html
 ```
 
-Then open `docs/_build/html/index.html` in a browser. The command pages in `docs/cli/` are generated from the
-command definitions in `src/frogchem/cli/`: edit the code (`description`, `guide`, `outputs`, `examples`, option
-help), not the generated Markdown.
+Then open `docs/_build/html/index.html` in a browser.

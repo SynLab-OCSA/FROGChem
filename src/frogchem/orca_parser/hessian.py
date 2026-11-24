@@ -126,18 +126,6 @@ def localize_mode(calc, mode: int) -> np.ndarray:
     return (sq / total) * 100.0
 
 
-def localize_mode_fragment(
-    calc,
-    mode: int,
-    fragments: dict[str, list[int]],
-) -> dict[str, float]:
-    atomic = localize_mode(calc, mode)
-    return {
-        name: float(np.sum(atomic[indices]))
-        for name, indices in fragments.items()
-    }
-
-
 def inverse_participation_ratio(calc, mode: int) -> float:
     displ = calc.normal_modes[:, mode].reshape(calc.geom.shape)
     sq = np.sum(displ ** 2, axis=1)
@@ -148,19 +136,3 @@ def inverse_participation_ratio(calc, mode: int) -> float:
     return float(num / denom)
 
 
-def localize_all_modes(calc, fragments=None) -> dict:
-    n_modes = calc.normal_modes.shape[1]
-    n_atoms = len(calc.atoms)
-    ipr = np.zeros(n_modes)
-    atomic = np.zeros((n_modes, n_atoms))
-    for k in range(n_modes):
-        ipr[k] = inverse_participation_ratio(calc, k)
-        atomic[k] = localize_mode(calc, k)
-    result = {'ipr': ipr, 'atomic': atomic}
-    if fragments is not None:
-        frag_contrib = {name: np.zeros(n_modes) for name in fragments}
-        for k in range(n_modes):
-            for name, indices in fragments.items():
-                frag_contrib[name][k] = float(np.sum(atomic[k, indices]))
-        result['fragments'] = frag_contrib
-    return result

@@ -19,14 +19,13 @@ from scipy.ndimage import distance_transform_edt
 
 from frogchem.density_builder import generate_grid, _guess_atomic_number
 from frogchem.io import write_gaussian_cube
-from frogchem.chemistry import BOHR_TO_ANGSTROM
 from frogchem.steric_maps import BONDI_RADII
 import logging
 from frogchem.printer import print_info
 
 logger = logging.getLogger(__name__)
 
-_AU = 1.0 / BOHR_TO_ANGSTROM  # Å → Bohr (CODATA 2018)
+from frogchem.chemistry import ANGSTROM_TO_BOHR as _AU
 
 _PROBE_RADIUS = 1.4  # water probe radius in Å
 

@@ -18,7 +18,7 @@ from frogchem.exceptions import InputError
 from frogchem.filetypes import load_calculation
 from frogchem.printer import print_error, print_info, print_warning
 
-EH_TO_EV = 27.211386
+from frogchem.chemistry import HARTREE_TO_EV as EH_TO_EV
 #: ChimeraX 1.12 reads multicubes correctly only up to 9 orbitals (one line of ids)
 CHIMERAX_MULTICUBE_LIMIT = 10
 
@@ -502,9 +502,6 @@ class ElectronicDensity(CLICommand, name='frog-density'):
             if not inquirer.confirm(message="Another operation?", default=True).execute():
                 break
 
-
-def parse_args():
-    return ElectronicDensity().build_parser().parse_args()
 
 
 def main():

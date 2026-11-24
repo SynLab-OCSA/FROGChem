@@ -12,6 +12,7 @@ mode of a transition state of a non-linear molecule is mode 6.
 import numpy as np
 
 from frogchem.cli.base import CLICommand, Guide, Output
+from frogchem.orbital_character import parse_indices
 from frogchem.exceptions import InputError
 from frogchem.filetypes import load_calculation
 from frogchem.orca_parser.hessian import (
@@ -28,7 +29,7 @@ from frogchem.printer import print_error, print_info, print_warning
 
 def parse_fragments(fragment_args: list[str]) -> dict[str, list[int]]:
     """
-    Parses '--fragment NAME:0,1,2' strings into a dict.
+    Parses '--fragment NAME:0,1,2' (ranges like 0-2 allowed) strings into a dict.
 
     Parameters
     ----------
@@ -44,7 +45,7 @@ def parse_fragments(fragment_args: list[str]) -> dict[str, list[int]]:
     for entry in fragment_args:
         try:
             name, indices_str = entry.split(':', 1)
-            indices = [int(i.strip()) for i in indices_str.split(',')]
+            indices = parse_indices(indices_str)
             fragments[name.strip()] = indices
         except ValueError:
             print_warning(
@@ -272,9 +273,6 @@ Fragment syntax (--fragment):
         if failed:
             raise InputError(f"{len(failed)} of {len(files)} file(s) could not be analyzed: {', '.join(failed)}")
 
-
-def parse_args():
-    return HessianLocalizer().build_parser().parse_args()
 
 def main():
     HessianLocalizer().main()

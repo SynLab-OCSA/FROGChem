@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional, Set
 import numpy as np
+from frogchem.chemistry import HARTREE_TO_EV
 
 from frogchem.filetypes import load_calculation
 from frogchem.printer import print_info, print_warning
@@ -15,7 +16,6 @@ from frogchem.cli.base import CLICommand, Guide, Output, ENSEMBLE_WEIGHTS, _Voxe
 from frogchem.exceptions import InputError
 from frogchem.io import parse_gaussian_cube, write_gaussian_cube
 from frogchem.math_geometry import calculate_centroids
-from frogchem.chimera_commands import chimerax_add_sphere
 from frogchem.orbital_character import parse_indices as _index_tokens
 
 # ponytail: matplotlib is lazily imported inside create_plot (through frogchem.plotter)
@@ -308,19 +308,13 @@ def ecd_band_intensities(energies: np.ndarray, rotatory_strengths: np.ndarray) -
     return np.asarray(rotatory_strengths, dtype=float) * np.asarray(energies, dtype=float)
 
 
-def ev_to_nm(x: np.ndarray) -> np.ndarray:
-    with np.errstate(divide='ignore'):
-        return np.where(x == 0, np.inf, 1239.84193 / x)
-
-
-def nm_to_ev(x: np.ndarray) -> np.ndarray:
-    with np.errstate(divide='ignore'):
-        return np.where(x == 0, np.inf, 1239.84193 / x)
-
-
-
-
 _HC_NM_EV = 1239.84193
+
+
+def ev_to_nm(x: np.ndarray) -> np.ndarray:
+    """eV <-> nm (the same reciprocal both ways)."""
+    with np.errstate(divide='ignore'):
+        return np.where(x == 0, np.inf, _HC_NM_EV / x)
 
 
 def classify_ct(delta_r: Optional[float], le_thr: float, ct_thr: float) -> str:
@@ -357,7 +351,7 @@ def create_plot(x_ev: np.ndarray, y_data: Dict[str, np.ndarray], graph_type: str
               for label, y in normalize_spectra(y_data).items()}
     with plotter.style(opts):
         fig, ax_nm = plotter.line(ev_to_nm(x_ev), curves, opts=opts)
-        ax_ev = ax_nm.secondary_xaxis('top', functions=(nm_to_ev, ev_to_nm))
+        ax_ev = ax_nm.secondary_xaxis('top', functions=(ev_to_nm, ev_to_nm))
         ax_ev.set_xlabel("Energy (eV)")
         # room for the energy axis on top
         ax_nm.set_title(ax_nm.get_title(), pad=20)
@@ -375,9 +369,10 @@ def export_csv(x_ev: np.ndarray, y_data: Dict[str, np.ndarray], out_file) -> Pat
 def _centroid_commands(res: Dict[str, Any], comment: str) -> List[str]:
     if res['positive_centroid'] is None:
         return []
+    sphere = "shape sphere center {:.3f},{:.3f},{:.3f} radius 0.500 color {}"
     return [f"# {comment}",
-            chimerax_add_sphere(res['positive_centroid'], color="blue", radius=0.5),
-            chimerax_add_sphere(res['negative_centroid'], color="red", radius=0.5)]
+            sphere.format(*res['positive_centroid'], "blue"),
+            sphere.format(*res['negative_centroid'], "red")]
 
 
 def process_cube_dct(filepath: str, args) -> Tuple[List[Any], List[str]]:
@@ -638,7 +633,7 @@ def process_orbital_grid(calc, file_path: str, args, cmd: CLICommand, dct_cubes:
     def energy(i):
         if en_all is None or i >= len(en_all):
             return None
-        return float(en_all[i]) * 27.211386
+        return float(en_all[i]) * HARTREE_TO_EV
 
     chosen = _chosen_states(calc, args.grid_states, 4)
     if not chosen:
@@ -792,7 +787,6 @@ class TddftParser(CLICommand, name='frog-tddft'):
     """
     category = 'spectroscopy'
     supports_ensemble = True
-    _auto_ensemble_average = False
     outputs = [
         Output('table', 'Excited States Summary (<file>)',
                'One row per state: multiplicity, energy (eV), f, R (1e-40 cgs), <S²> and the '
@@ -1299,9 +1293,6 @@ class TddftParser(CLICommand, name='frog-tddft'):
                             "Ensemble-Averaged Spin-Orbit Coupling (SOC) Matrix (Boltzmann Weighted)",
                             "the ensemble")
 
-
-def parse_args():
-    return TddftParser().build_parser().parse_args()
 
 
 def main():

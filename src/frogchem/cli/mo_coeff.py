@@ -13,7 +13,7 @@ from frogchem.printer import print_info, print_warning
 
 # ponytail: matplotlib is lazily loaded inside plot_coeff_matrix (through frogchem.plotter)
 
-HARTREE_TO_EV = 27.211386245988
+from frogchem.chemistry import HARTREE_TO_EV
 
 TYPE_CODES = {
     's': [0],
@@ -316,9 +316,6 @@ class MoCoeff(CLICommand, name='frog-mo'):
             tag = path.stem if (multiple and args.plot) else None
             self.save_figure(fig, self.plot_path(default, tag))
 
-
-def parse_args():
-    return MoCoeff().build_parser().parse_args()
 
 
 def main():

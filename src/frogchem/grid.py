@@ -7,6 +7,7 @@ data sets loaded from Gaussian Cube files.
 from typing import Dict, Any, Union
 import numpy as np
 from scipy.spatial import cKDTree
+from frogchem.chemistry import BOHR_TO_ANGSTROM
 
 def _check_same_lattice(grid1, grid2, op):
     """Voxel-by-voxel arithmetic only makes sense on identical grids (size, origin, voxels)."""
@@ -89,7 +90,7 @@ def integrate_density_voronoi(cube_data: Dict[str, Any]) -> np.ndarray:
     voxel_volume = abs(np.linalg.det(np.asarray(voxel_vectors, dtype=float)))
     if cube_data.get('units', 'Bohr') == 'Angstrom':
         # density values are in e/bohr^3 whatever the coordinate unit: express the volume in bohr^3
-        voxel_volume /= 0.52917721067 ** 3
+        voxel_volume /= BOHR_TO_ANGSTROM ** 3
     atom_integrals = np.bincount(nearest_atom_indices, weights=flat_density, minlength=n_atoms)
 
     return atom_integrals * voxel_volume

@@ -114,14 +114,14 @@ class Calculation(BaseParser):
             try:
                 self.nbo = NBOAnalysis(self.fl, cycle=-1)
             except Exception as e:
-                self.errors.add("nbo", f"Failed to parse NBO analysis: {e}")
+                logger.warning(f"{self.fname}: failed to parse NBO analysis: {e}")
                 self.nbo = None
 
         if 'eprnmr' in self.__dict__ or self.has_nmr():
             try:
                 self.nmr = NMRAnalysis(self.fl, self.geom, self.atoms)
             except Exception as e:
-                self.errors.add("nmr", f"Failed to parse NMR analysis: {e}")
+                logger.warning(f"{self.fname}: failed to parse NMR analysis: {e}")
                 self.nmr = None
 
     def has_nmr(self) -> bool:
@@ -233,28 +233,10 @@ class Calculation(BaseParser):
 
     def to_rdkit(self, charge=None):
         """Convert calculation geometry to an RDKit Mol object."""
-        from rdkit import Chem
-        from rdkit.Chem import rdDetermineBonds
-
-        mol = Chem.RWMol()
-        conf = Chem.Conformer()
-        for i, (sym, pos) in enumerate(zip(self.atoms, self.geom)):
-            mol.AddAtom(Chem.Atom(str(sym)))
-            conf.SetAtomPosition(i, (float(pos[0]), float(pos[1]), float(pos[2])))
-        mol = mol.GetMol()
-        mol.AddConformer(conf)
-
-        chg = 0
-        if charge is not None:
-            chg = charge
-        elif hasattr(self, 'charge') and self.charge is not None:
+        from frogchem.io import rdkit_mol
+        if charge is None:
             try:
-                chg = int(self.charge)
+                charge = int(getattr(self, 'charge', 0) or 0)
             except (ValueError, TypeError):
-                chg = 0
-
-        try:
-            rdDetermineBonds.DetermineBonds(mol, charge=chg)
-        except Exception as e:
-            logger.debug("Failed to determine bonds with RDKit: %s", e)
-        return mol
+                charge = 0
+        return rdkit_mol(self.atoms, self.geom, charge, strict=False)

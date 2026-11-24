@@ -23,6 +23,7 @@ class CalcRmsd(CLICommand, name='frog-rmsd'):
     """
     category = 'geometry'
     supports_ensemble = True
+    _auto_ensemble_average = True
     outputs = [
         Output('table', 'λ-RMSD (reference: <ref>)',
                "One row per structure ('<file> - Conf <n>', n 0-based in file order): "
@@ -126,10 +127,6 @@ class CalcRmsd(CLICommand, name='frog-rmsd'):
 
 
 # backward compat
-def parse_args():
-    return CalcRmsd().build_parser().parse_args()
-
-
 def main():
     CalcRmsd().main()
 

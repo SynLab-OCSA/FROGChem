@@ -45,7 +45,6 @@ mean for dihedrals, linear and r⁻⁶ NOE average for distances).
 """
     category = 'geometry'
     supports_ensemble = True
-    _auto_ensemble_average = False
     outputs = [
         Output('table', 'Internal Coordinates',
                'One row per structure/conformer, one column per coordinate (Å or degrees); '
@@ -202,9 +201,6 @@ mean for dihedrals, linear and r⁻⁶ NOE average for distances).
         self.output(avg_rows, headers=avg_headers,
                     title="Ensemble-Averaged Internal Coordinates (Boltzmann Weighted)")
 
-
-def parse_args():
-    return Internals().build_parser().parse_args()
 
 def main():
     Internals().main()

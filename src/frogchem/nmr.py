@@ -102,15 +102,6 @@ def parse_spins_arg(arg: Any) -> Dict[str, float]:
     return res
 
 
-def set_nucleus_spin(nucleus: str, spin: Union[float, str]) -> None:
-    """Dynamically set or override the nuclear spin for a nucleus without altering the source code."""
-    norm = normalize_nucleus_name(nucleus)
-    s_val = parse_spin(spin)
-    if norm not in NUCLEUS_DATA:
-        NUCLEUS_DATA[norm] = {'spin': s_val, 'element': extract_element_from_nucleus(nucleus)}
-    else:
-        NUCLEUS_DATA[norm]['spin'] = s_val
-
 # Synonyms mapping (e.g., 'H' -> '1H', 'C' -> '13C', 'S' -> '33S')
 _NUCLEUS_ALIASES: Dict[str, str] = {
     'H': '1H',
@@ -248,11 +239,6 @@ def is_quadrupolar(nucleus_or_spin: Union[str, float]) -> bool:
     if isinstance(nucleus_or_spin, (int, float)):
         return float(nucleus_or_spin) > 0.5
     return get_nucleus_spin(str(nucleus_or_spin)) > 0.5
-
-
-def get_spin_multiplicity(spin: float, n_equivalent: int = 1) -> int:
-    """Return the first-order multiplet splitting multiplicity (2 * n * I + 1)."""
-    return int(round(2.0 * n_equivalent * spin + 1.0))
 
 
 def extract_element_from_nucleus(nucleus: str) -> str:
@@ -489,7 +475,6 @@ def extract_reference_shieldings(
     return result
 
 
-
 def resolve_reference_shielding(
     ref: Union[float, int, str, os.PathLike, Any, None],
     nucleus: str = '1H',
@@ -571,7 +556,6 @@ def convert_shielding_to_shift(
 
     ref_val = resolve_reference_shielding(ref_sigma, nucleus=nucleus)
     return float((ref_val - sigma) / (1 - ref_val * 1e-6))
-
 
 
 def get_nmr_equivalencies(

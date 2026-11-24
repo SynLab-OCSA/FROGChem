@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import Optional, Union, Sequence, Dict, Any, Tuple
+from typing import Optional, Dict, Tuple
 import numpy as np
 import pandas as pd
 
@@ -538,96 +538,3 @@ class NBOAnalysis:
 
         return df
 
-    def get_interactions(
-        self,
-        donor: Optional[Union[int, Sequence[int]]] = None,
-        acceptor: Optional[Union[int, Sequence[int]]] = None,
-        donor_type: Optional[str] = None,
-        acceptor_type: Optional[str] = None,
-        min_e2: float = 2.0,
-    ) -> pd.DataFrame:
-        """Query donor-acceptor interactions from second-order perturbation theory E(2).
-
-        Args:
-            donor: 0-based atom index or list of atom indices in donor orbital.
-            acceptor: 0-based atom index or list of atom indices in acceptor orbital.
-            donor_type: Filter by donor type (e.g. 'LP', 'BD').
-            acceptor_type: Filter by acceptor type (e.g. 'BD*', 'RY*').
-            min_e2: Minimum perturbation energy threshold in kcal/mol (default: 2.0).
-
-        Returns:
-            pandas.DataFrame sorted descending by E(2).
-        """
-        if self.perturbation_theory is None or self.perturbation_theory.empty:
-            return pd.DataFrame()
-
-        df = self.perturbation_theory[self.perturbation_theory['E(2)'] >= min_e2].copy()
-
-        if donor_type:
-            df = df[df['Donor_Type'].str.upper().str.contains(donor_type.upper())]
-
-        if acceptor_type:
-            df = df[df['Acceptor_Type'].str.upper().str.contains(acceptor_type.upper())]
-
-        if donor is not None:
-            d_set = {donor} if isinstance(donor, int) else set(donor)
-            df = df[df['Donor_Atoms'].apply(lambda a: not set(a).isdisjoint(d_set))]
-
-        if acceptor is not None:
-            a_set = {acceptor} if isinstance(acceptor, int) else set(acceptor)
-            df = df[df['Acceptor_Atoms'].apply(lambda a: not set(a).isdisjoint(a_set))]
-
-        return df.sort_values(by='E(2)', ascending=False)
-
-    def get_wiberg_bond_order(self, atom1: int, atom2: int) -> float:
-        """Return Wiberg bond order between two atoms (0-based indices)."""
-        if self.wiberg_matrix is None:
-            raise ValueError(
-                "Wiberg bond index matrix not found. "
-                "Ensure NBO was executed with $NBO BNDIDX $END."
-            )
-        n = self.wiberg_matrix.shape[0]
-        if not (0 <= atom1 < n and 0 <= atom2 < n):
-            raise IndexError(f"Atom indices ({atom1}, {atom2}) out of range (0..{n - 1})")
-        return float(self.wiberg_matrix[atom1, atom2])
-
-    def get_wiberg_total(self, atom: int) -> float:
-        """Return total Wiberg valence for an atom (0-based index)."""
-        if self.wiberg_totals is not None and atom in self.wiberg_totals:
-            return float(self.wiberg_totals[atom])
-        if self.wiberg_matrix is not None:
-            n = self.wiberg_matrix.shape[0]
-            if not (0 <= atom < n):
-                raise IndexError(f"Atom index {atom} out of range (0..{n - 1})")
-            diag = self.wiberg_matrix[atom, atom]
-            return float(np.sum(self.wiberg_matrix[atom, :]) - diag)
-        raise ValueError("Wiberg bond index data not found in NBO output.")
-
-    def get_npa_charge(self, atom: int) -> float:
-        """Return the NPA partial charge of an atom (0-based index)."""
-        if self.npa_charges is None or self.npa_charges.empty:
-            raise ValueError("NPA charges not found in NBO output.")
-        match = self.npa_charges[self.npa_charges['Index'] == atom]
-        if match.empty:
-            raise IndexError(f"Atom index {atom} not found in NPA charges.")
-        return float(match.iloc[0]['Charge'])
-
-    def summary(self) -> dict:
-        """Return a structured summary dictionary of the NBO analysis."""
-        res: Dict[str, Any] = {
-            "n_atoms": len(self.npa_charges) if self.npa_charges is not None else 0,
-            "has_npa": self.npa_charges is not None and not self.npa_charges.empty,
-            "has_details": self.nbo_details is not None and not self.nbo_details.empty,
-            "has_e2": self.perturbation_theory is not None and not self.perturbation_theory.empty,
-            "has_wiberg": self.wiberg_matrix is not None,
-        }
-        if self.nbo_details is not None and not self.nbo_details.empty:
-            res["orbital_counts"] = self.nbo_details['Type'].value_counts().to_dict()
-        if self.perturbation_theory is not None and not self.perturbation_theory.empty:
-            top_e2 = self.perturbation_theory.sort_values(by='E(2)', ascending=False).iloc[0]
-            res["strongest_interaction"] = {
-                "donor": f"{top_e2['Donor_Type']} {top_e2['Donor_Label']}",
-                "acceptor": f"{top_e2['Acceptor_Type']} {top_e2['Acceptor_Label']}",
-                "e2": float(top_e2['E(2)']),
-            }
-        return res

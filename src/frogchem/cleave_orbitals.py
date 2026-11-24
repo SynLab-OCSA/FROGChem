@@ -21,7 +21,7 @@ from frogchem.printer import print_warning
 
 FORMAT = 'cleave-orbitals'
 VERSION = 1
-_AU = 1.8897259886  # Å → Bohr (as density_builder)
+from frogchem.chemistry import ANGSTROM_TO_BOHR as _AU
 
 # PySCF (l, m) → FROGChem angular code (orca_parser.orb_type.ORB_TYPE)
 _CODES = {

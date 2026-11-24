@@ -8,17 +8,13 @@ Modelled after plotprofile.
 from __future__ import annotations
 
 import colorsys
-import inspect
 import logging
 from dataclasses import dataclass, field
 from itertools import pairwise
-from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
+from typing import Any, List, Optional, Sequence, Tuple, Union, cast
 
 import matplotlib.colors as mpc
-import matplotlib.patches as mpatches
-import matplotlib.path as mpath
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -148,15 +144,13 @@ def _load_style(style_name: str) -> dict[str, Any]:
     return base
 
 
-def _desaturate_color(color: Any, factor: float = 1.2) -> tuple[float, float, float]:
+def desaturate_colour(color: Any, factor: float = 1.2) -> tuple[float, float, float]:
     """Desaturate a colour, for the fill/line under a curve."""
     rgb = mpc.to_rgb(color)
     hls = colorsys.rgb_to_hls(*rgb)
     hls_new = (hls[0], 1.0 - (0.4 * factor), 0.3 * factor)
     return colorsys.hls_to_rgb(*hls_new)
 
-
-desaturate_colour = _desaturate_color
 
 
 def generate_coordinates(energies: Sequence[Optional[float]]) -> tuple[list[float], list[float]]:
@@ -193,8 +187,6 @@ def generate_coordinates(energies: Sequence[Optional[float]]) -> tuple[list[floa
     return x_coords, y_coords
 
 
-_generate_coordinates = generate_coordinates
-
 
 def cubic_bezier_points(p0: np.ndarray, p1: np.ndarray, p2: np.ndarray, p3: np.ndarray, num: int = 500) -> np.ndarray:
     """Sample a cubic bezier defined by control points p0-p3."""
@@ -207,31 +199,17 @@ def cubic_bezier_points(p0: np.ndarray, p1: np.ndarray, p2: np.ndarray, p3: np.n
     )
 
 
-_cubic_bezier_points = cubic_bezier_points
-
-
-# ── PlotConfig (backward-compatible dataclass) ───────────────────────────────
+# ── PlotConfig ──────────────────────────────────────────────────────────────
 
 @dataclass
 class PlotConfig:
     label: List[Optional[str]] = field(default_factory=list)
     colors: List[Optional[str]] = field(default_factory=lambda: [None])
     legend: bool = False
-    save: bool = False
-    relative: bool = False
     labelpoint: Optional[List[int]] = None
-    zero: List[int] = field(default_factory=lambda: [0])
     title: str = "Reaction Energy Path"
     style: List[str] = field(default_factory=lambda: ['-'])
-    linewidth: List[float] = field(default_factory=lambda: [1.5])
-    points: List[str] = field(default_factory=list)
-    pointscolor: List[Optional[str]] = field(default_factory=list)
-    pointsstyle: List[str] = field(default_factory=list)
-    ypad: List[float] = field(default_factory=lambda: [0.0])
-    horizontalalignment: List[str] = field(default_factory=lambda: ['left'])
-    y_limit: Optional[float] = None
     decimal_digits: int = 1
-    directory: str = "reaction"
     sections: List[str] = field(default_factory=list)
     sections_start: List[int] = field(default_factory=list)
     sections_end: List[int] = field(default_factory=list)
@@ -239,13 +217,10 @@ class PlotConfig:
     position_sections: str = 'bottom'
     figsize: Tuple[float, float] = (10.0, 7.0)
     fontsize_title: int = 12
-    fontsize_label: int = 12
     fontsize_ticks: int = 10
     desaturate: bool = False
-    show: bool = True
     legend_barriers: Optional[bool] = None
     x: Optional[List[float]] = None
-    excitation_arrows: bool = True
     labels: Optional[bool] = None
     show_xticks: bool = True
     xticks: bool = True
@@ -258,76 +233,8 @@ class PlotConfig:
     transparent: bool = False
     bg_color: Optional[str] = None
 
-    @classmethod
-    def from_dict(cls, data: Dict[str, List[str]]) -> 'PlotConfig':
-        config = cls()
-        data = dict(data)
-        if 'color' in data and 'colors' not in data:
-            data['colors'] = data['color']
-        if 'xticks' in data and 'show_xticks' not in data:
-            data['show_xticks'] = data['xticks']
-        if 'show_xticks' in data and 'xticks' not in data:
-            data['xticks'] = data['show_xticks']
-        if 'marker' in data and 'point_type' not in data:
-            data['point_type'] = data['marker']
-        if 'font_size' not in data and 'fontsize' in data:
-            data['font_size'] = data['fontsize']
-        if 'transparent' in data and 'transparent_bg' not in data:
-            data['transparent_bg'] = data['transparent']
-        if 'transparent_bg' in data and 'transparent' not in data:
-            data['transparent'] = data['transparent_bg']
 
-        type_conversions = {
-            'legend': lambda x: x[0].lower() == 'true' if x else False,
-            'labels': lambda x: x[0].lower() == 'true' if x else False,
-            'show_xticks': lambda x: x[0].lower() == 'true' if x else True,
-            'xticks': lambda x: x[0].lower() == 'true' if x else True,
-            'point_type': lambda x: x[0] if x else None,
-            'curviness': lambda x: float(x[0]) if x else None,
-            'font_size': lambda x: int(x[0]) if x else 11,
-            'axes': lambda x: x[0] if x else "none",
-            'sections_shift': lambda x: float(x[0]) if x else 0.05,
-            'units': lambda x: x[0] if x else "kcal/mol",
-            'transparent': lambda x: x[0].lower() in ('true', '1') if x else False,
-            'transparent_bg': lambda x: x[0].lower() in ('true', '1') if x else False,
-            'bg_color': lambda x: x[0] if x and x[0].lower() not in ('none', '') else None,
-            'legend_barriers': lambda x: x[0].lower() == 'true' if x else False,
-            'excitation_arrows': lambda x: x[0].lower() == 'true' if x else False,
-            'x': lambda x: [float(i) for i in x if i.strip()],
-            'save': lambda x: x[0].lower() == 'true' if x else False,
-            'show': lambda x: x[0].lower() == 'true' if x else True,
-            'relative': lambda x: x[0].lower() == 'true' if x else False,
-            'desaturate': lambda x: x[0].lower() == 'true' if x else False,
-            'labelpoint': lambda x: [int(i) if str(i).strip().lstrip('-').isdigit() else str(i).strip() for i in x if str(i).strip()] if x and x != ['None'] else None,
-            'zero': lambda x: [int(i) for i in x if i.strip()],
-            'title': lambda x: x[0] if x else "Reaction Energy Path",
-            'linewidth': lambda x: [float(i) for i in x if i.strip()],
-            'ypad': lambda x: [float(i) for i in x if i.strip()],
-            'y_limit': lambda x: float(x[0]) if x and x[0] != 'None' else None,
-            'decimal_digits': lambda x: int(x[0]) if x else 1,
-            'directory': lambda x: x[0] if x else "reaction",
-            'sections_start': lambda x: [int(i) for i in x if i.strip()],
-            'sections_end': lambda x: [int(i) for i in x if i.strip()],
-            'position_sections': lambda x: x[0] if x else "bottom",
-            'figsize': lambda x: tuple(float(i) for i in x) if x else (10.0, 7.0),
-            'fontsize_title': lambda x: int(x[0]) if x else 12,
-            'fontsize_label': lambda x: int(x[0]) if x else 12,
-            'fontsize_ticks': lambda x: int(x[0]) if x else 10,
-        }
-        for key, value in data.items():
-            if hasattr(config, key):
-                if key in type_conversions:
-                    try:
-                        setattr(config, key, type_conversions[key](value))
-                    except (ValueError, IndexError):
-                        import warnings
-                        warnings.warn(f"Invalid value for {key}: {value}. Using default.")
-                else:
-                    setattr(config, key, value or getattr(config, key))
-        return config
-
-
-# ── ReactionProfilePlotter / ReactionPlotter ────────────────────────────────
+# ── ReactionProfilePlotter ──────────────────────────────────────────────────
 
 class ReactionProfilePlotter:
     """Plot reaction energy profiles with plotprofile styling and capabilities."""
@@ -407,7 +314,6 @@ class ReactionProfilePlotter:
 
         self.fig: Optional[plt.Figure] = None
         self.ax: Optional[plt.Axes] = None
-        self._legend_handles: list[Line2D] = []
 
     @staticmethod
     def _sub_style(name: str, value: Any, allowed: Optional[Sequence[str]]) -> dict[str, Any]:
@@ -1381,108 +1287,6 @@ class ReactionProfilePlotter:
 
         return fig, ax
 
-    # ── Legacy compatibility methods (used by older FROG scripts) ───────────
-
-    def plot_reaction_path(
-        self,
-        data: np.ndarray,
-        x_positions: list[float],
-        color: Optional[str] = None,
-        label: Optional[str] = None,
-        linestyle: str = '-',
-        linewidth: float = 1.5,
-        labelpoint: Optional[list[int]] = None,
-        zero_idx: int = 0,
-        ypad: float = 0.0,
-        horizontalalignment: Optional[list[str]] = None,
-        decimals: int = 1,
-        index: int = 1,
-        path_index: int = 0,
-        total_paths: int = 1,
-        path_label: Optional[str] = None,
-    ) -> None:
-        """Plot a single reaction path (legacy interface)."""
-        if self.fig is None or self.ax is None:
-            self.fig, self.ax = plt.subplots(figsize=self.figsize)
-
-        if len(data) != len(x_positions):
-            raise ValueError("data and x_positions must have same length")
-
-        col = color or self._default_colors[0]
-        light = _desaturate_color(col, self.desaturate_factor) if self.desaturate else col
-        points = list(zip(x_positions, data))
-
-        # Bezier curve
-        verts = [[points[0][0], points[0][1]]]
-        codes = [mpath.Path.MOVETO]
-        for j in range(len(points) - 1):
-            x0, y0 = points[j]
-            x1, y1 = points[j + 1]
-            dx = self.curviness * (x1 - x0)
-            verts.append([x0 + dx, y0])
-            verts.append([x1 - dx, y1])
-            verts.append([x1, y1])
-            codes += [mpath.Path.CURVE4, mpath.Path.CURVE4, mpath.Path.CURVE4]
-
-        path = mpath.Path(verts, codes)
-        ls = 'dashed' if linestyle == 'dashed' else 'solid'
-        patch = mpatches.PathPatch(
-            path, fc='none', color=light, label=label,
-            linestyle=ls, linewidth=linewidth,
-            transform=self.ax.transData,
-        )
-        self.ax.add_patch(patch)
-
-        if label:
-            h = Line2D([], [], color=light, linewidth=linewidth, linestyle=ls, label=label)
-            self._legend_handles.append(h)
-
-        # Points
-        for x, y in points:
-            if self.point_type in ('dot', '.'):
-                self.ax.plot(x, y, 'o', markersize=self.marker_size, color=col)
-            elif self.point_type == 'bar':
-                self.ax.plot([x - self.bar_length / 2, x + self.bar_length / 2], [y, y], color='black', lw=self.bar_width)
-            else:
-                self.ax.plot(x, y, marker='o', markerfacecolor='white', markeredgecolor=col, markeredgewidth=self.line_width)
-
-        if labelpoint:
-            ha_list = horizontalalignment or ['left'] * len(labelpoint)
-            for idx, pt_idx in enumerate(labelpoint):
-                if pt_idx >= len(data):
-                    continue
-                ha = ha_list[idx] if idx < len(ha_list) else 'left'
-                ha = 'right' if pt_idx == len(data) - 1 else ha
-                x_off = 0.2 if ha != 'right' else -0.2
-                diff = np.round(data[pt_idx] - data[zero_idx], decimals)
-                self.ax.text(
-                    x_positions[pt_idx] + x_off, data[pt_idx] + ypad,
-                    f"$\\Delta G^\\ddagger$ = {diff}\nkcal/mol",
-                    verticalalignment='center', horizontalalignment=ha,
-                    color=col,
-                )
-
-    def add_custom_tick_labels(
-        self,
-        x_positions: list[float],
-        labels: list[str],
-        color: Any,
-        path_index: int,
-        total_paths: int,
-        path_label: Optional[str] = None,
-    ) -> None:
-        if not x_positions or not labels or self.ax is None:
-            return
-        y_min, y_max = self.ax.get_ylim()
-        base_offset = 0.06
-        offset = -base_offset * ((path_index + 1) if total_paths > 1 else 1)
-        y_span = y_max - y_min
-        y_pos = y_min + offset * y_span
-        for pos, lbl in zip(x_positions, labels):
-            self.ax.text(pos, y_pos, lbl, color=color, ha='center', va='top')
-        if path_label:
-            self.ax.text(min(x_positions) - 0.5, y_pos, path_label, color=color, ha='right', va='top')
-
     def add_section_arrows(
         self,
         x_positions: list[float],
@@ -1516,90 +1320,3 @@ class ReactionProfilePlotter:
                 bbox=dict(boxstyle='round,pad=0.4', facecolor='white', edgecolor=c, linewidth=0.5),
                 fontsize=max(6, self.font_size - 2), zorder=3,
             )
-
-
-    def add_additional_points(self, points: list[str], colors: list[Any], styles: list[str]) -> None:
-        if not points or self.ax is None:
-            return
-        if not styles:
-            styles = ['-'] * len(points)
-        for point_str, color, style in zip(points, colors, styles):
-            try:
-                coords = np.array(point_str.strip('()').split(','), dtype=float)
-                if len(coords) == 2:
-                    x, y = coords
-                    self.ax.scatter(x, y, color=color, alpha=0.6, s=30)
-                    self.ax.hlines(y, x - 0.1, x + 0.1, color=color, alpha=0.7, linestyle=style)
-            except Exception:
-                pass
-
-    def finalize_plot(
-        self,
-        config: PlotConfig,
-        show_legend: bool,
-        show_standard_ticks: bool,
-        x_positions: Optional[list[float]] = None,
-        x_labels: Optional[list[str]] = None,
-        show_sections: bool = False,
-    ) -> None:
-        if self.ax is None:
-            return
-        self.ax.set_title(config.title, fontsize=config.fontsize_title)
-        self.ax.set_ylabel(r"$\Delta G$ (kcal/mol)", fontsize=config.fontsize_label)
-        self.ax.tick_params(axis='both', labelsize=config.fontsize_ticks)
-        if show_standard_ticks and x_positions and x_labels:
-            self.ax.set_xticks(x_positions)
-            self.ax.set_xticklabels(x_labels, fontsize=config.fontsize_ticks)
-            self.ax.spines['bottom'].set_visible(True)
-        else:
-            self.ax.set_xticks([])
-        if show_sections and x_positions and config.sections:
-            self.add_section_arrows(
-                x_positions, config.sections, config.sections_start, config.sections_end,
-                config.colors_sections, config.position_sections,
-            )
-        if show_legend and self._legend_handles:
-            labs = [h.get_label() for h in self._legend_handles]
-            self.ax.legend(self._legend_handles, labs, ncol=4, loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True)
-        if config.y_limit is not None:
-            self.ax.set_ylim(top=config.y_limit)
-        if self.fig is not None:
-            self.fig.tight_layout()
-
-    def save_and_show(self, config: PlotConfig, file_content: str = '', show: bool = False,
-                      dpi: Optional[int] = None, fig_format: str = 'png') -> None:
-        """Legacy output: with `save: true`, write <directory>/Rxn_profile.<fig_format> and input.txt.
-
-        Saving goes through frogchem.plotter.save_figure (shared --dpi, reported on stderr);
-        the figure is shown only when `show` is True and is always closed afterwards.
-        """
-        if self.fig is None:
-            return
-        from frogchem.plotter import DEFAULT_DPI, save_figure
-        if config.save:
-            output_dir = Path(config.directory)
-            output_dir.mkdir(exist_ok=True, parents=True)
-            if file_content:
-                from frogchem.printer import print_saved
-                (output_dir / 'input.txt').write_text(file_content)
-                print_saved(output_dir / 'input.txt', 'input copy')
-            save_figure(self.fig, output_dir / f'Rxn_profile.{fig_format}',
-                        dpi=dpi or DEFAULT_DPI, show=show)
-        else:
-            if show:
-                plt.show()
-            plt.close(self.fig)
-
-
-# Aliases
-ReactionPlotter = ReactionProfilePlotter
-
-_PLOT_ARGS = frozenset(inspect.signature(ReactionProfilePlotter.plot).parameters) - {"self", "energy_data"}
-
-
-def plot_reaction_profile(energy_data: Any, style: str = "default", **kwargs: Any) -> tuple[plt.Figure, plt.Axes]:
-    """Plot a reaction profile in one call, returning (fig, ax)."""
-    plot_kwargs = {k: v for k, v in kwargs.items() if k in _PLOT_ARGS}
-    style_kwargs = {k: v for k, v in kwargs.items() if k not in _PLOT_ARGS}
-    plotter = ReactionProfilePlotter(style=style, **style_kwargs)
-    return plotter.plot(energy_data, **plot_kwargs)

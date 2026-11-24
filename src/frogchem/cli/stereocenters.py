@@ -2,28 +2,11 @@
 
 from frogchem.exceptions import InputError
 from frogchem.filetypes import load_structures
+from frogchem.io import rdkit_mol
 from frogchem.symmetry import get_absolute_configuration
 from frogchem.printer import print_info
 from frogchem.cli.base import CLICommand, Guide, Output
 
-
-def _rdkit_mol(atoms, geom, charge: int = 0):
-    """RDKit molecule with bonds perceived from the 3D coordinates."""
-    try:
-        from rdkit import Chem
-        from rdkit.Chem import rdDetermineBonds
-    except ImportError as e:
-        raise InputError("frog-stereocenters requires RDKit (pip install rdkit)") from e
-
-    mol = Chem.RWMol()
-    conf = Chem.Conformer(len(atoms))
-    for i, (symbol, xyz) in enumerate(zip(atoms, geom)):
-        mol.AddAtom(Chem.Atom(str(symbol)))
-        conf.SetAtomPosition(i, tuple(float(c) for c in xyz))
-    mol = mol.GetMol()
-    mol.AddConformer(conf, assignId=True)
-    rdDetermineBonds.DetermineBonds(mol, charge=charge)
-    return mol
 
 
 class Stereocenters(CLICommand, name='frog-stereocenters'):
@@ -98,9 +81,7 @@ class Stereocenters(CLICommand, name='frog-stereocenters'):
             rows = []
             for n, (atoms, geom) in enumerate(structs):
                 try:
-                    mol = _rdkit_mol(atoms, geom, args.charge)
-                except InputError:
-                    raise
+                    mol = rdkit_mol(atoms, geom, args.charge)
                 except Exception as e:
                     where = f"{f} (conf {n})" if multi else f
                     raise InputError(f"Bond perception failed for {where}: {e} (check --charge)") from e
@@ -114,9 +95,6 @@ class Stereocenters(CLICommand, name='frog-stereocenters'):
             headers = ['Atom', 'Element', 'Configuration']
             self.output(rows, headers=['Conf', *headers] if multi else headers, title=f"Stereocenters ({f})")
 
-
-def parse_args():
-    return Stereocenters().build_parser().parse_args()
 
 
 def main():

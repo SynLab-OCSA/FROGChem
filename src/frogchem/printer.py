@@ -10,7 +10,7 @@ import json
 import math
 import sys
 from pathlib import Path
-from typing import List, Any, Dict, Optional, Sequence
+from typing import List, Any, Optional, Sequence
 
 from rich.console import Console
 from rich.table import Table
@@ -20,8 +20,8 @@ from rich import box
 
 __all__ = [
     "console", "err_console", "print_title", "print_info", "print_success",
-    "print_saved", "print_warning", "print_error", "print_table", "extract_table_data",
-    "output_results", "set_quiet", "TableResult", "tables_to_json", "tables_to_csv", "tables_to_text",
+    "print_saved", "print_warning", "print_error", "print_table",
+    "set_quiet", "TableResult", "tables_to_json", "tables_to_csv", "tables_to_text",
     "write_tables",
 ]
 
@@ -42,13 +42,9 @@ def set_quiet(quiet: bool) -> None:
     _QUIET = bool(quiet)
 
 
-def _quiet() -> bool:
-    return _QUIET
-
-
 def print_title(text: str) -> None:
     """Print title in a colored box (stderr, suppressed in quiet mode)."""
-    if _quiet():
+    if _QUIET:
         return
     err_console.print()
     err_console.print(Panel(Text(text.upper(), justify="center", style="bold white"), style="blue"))
@@ -56,12 +52,12 @@ def print_title(text: str) -> None:
 
 def print_info(text: str) -> None:
     """Print info message (cyan) to stderr, suppressed in quiet mode."""
-    if not _quiet():
+    if not _QUIET:
         err_console.print(f"[bold cyan]ℹ[/]  {text}")
 
 def print_success(text: str) -> None:
     """Print success message (green) to stderr, suppressed in quiet mode."""
-    if not _quiet():
+    if not _QUIET:
         err_console.print(f"[bold green]✔[/]  {text}")
 
 def print_saved(path, kind: str = "file") -> None:
@@ -143,34 +139,12 @@ def print_table(
     headers: List[str],
     title: str = "",
     floatfmt: str = ".3f",
-    pastable: bool = False
 ) -> None:
-    """Print a table on stdout (Rich box, or tab-separated when pastable)."""
+    """Print a table on stdout as a Rich box."""
     if not data:
         print_warning(f"No data to show{f' for {title!r}' if title else ''}.")
         return
-
-    if pastable:
-        if title:
-            print(title)
-        print("\t".join(headers))
-        for row in data:
-            print("\t".join(_format_cell(item, _col_fmt(floatfmt, i)) for i, item in enumerate(row)))
-        return
-
     console.print(_build_rich_table(data, headers, title, floatfmt))
-
-
-def extract_table_data(
-    items: List[Dict[str, Any]],
-    columns: List[str],
-    missing_val: str = "N/A"
-) -> List[List[Any]]:
-    table_rows = []
-    for item in items:
-        row = [item.get(col, missing_val) for col in columns]
-        table_rows.append(row)
-    return table_rows
 
 
 class TableResult:
@@ -232,27 +206,3 @@ def write_tables(tables: Sequence[TableResult], path, fmt: str = "table") -> Pat
     return path
 
 
-def output_results(
-    data: List[List[Any]],
-    headers: List[str],
-    title: str = "",
-    fmt: str = "table",
-    floatfmt: str = ".3f",
-    file: Optional[str] = None,
-) -> None:
-    """Single-table output: table (default), json, or csv, on stdout or to `file`.
-
-    CLI commands should use CLICommand.output(), which collects every table of a run.
-    """
-    if not data:
-        print_warning("No data to show.")
-        return
-    tables = [TableResult(data, headers, title, floatfmt)]
-    if file:
-        print_saved(write_tables(tables, file, fmt), "table")
-    elif fmt == "json":
-        print(tables_to_json(tables))
-    elif fmt == "csv":
-        print(tables_to_csv(tables), end="")
-    else:
-        print_table(data, headers=headers, title=title, floatfmt=floatfmt)

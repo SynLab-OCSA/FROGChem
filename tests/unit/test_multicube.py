@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from frogchem.io import parse_gaussian_cube, write_gaussian_cube, cube_component
+from frogchem.io import parse_gaussian_cube, write_gaussian_cube
 
 ROOT = Path(__file__).resolve().parents[2]
 TDDFT_ORCA = ROOT / "tests" / "data" / "gaussian_ref" / "orca" / "g05_methyloxirane_td.out"
@@ -33,16 +33,6 @@ class TestMulticubeIO:
         assert back["data"].shape == (4, 5, 7, 12)
         np.testing.assert_allclose(back["data"], data, atol=1e-5)  # %13.5E precision
 
-    def test_component_is_an_ordinary_cube(self, tmp_path):
-        rng = np.random.default_rng(1)
-        data = rng.normal(size=(3, 3, 4, 3))
-        path = tmp_path / "multi.cube"
-        write_gaussian_cube(str(path), _cube(data, [15, 16, 17]))
-        comp = cube_component(parse_gaussian_cube(str(path)), 1)
-        assert comp["data"].shape == (3, 3, 4)
-        assert comp["orbital_ids"] is None
-        assert comp["natoms"] == 2
-        np.testing.assert_allclose(comp["data"], data[..., 1], atol=1e-5)
 
     def test_single_cube_has_no_id_record(self, tmp_path):
         data = np.arange(24, dtype=float).reshape(2, 3, 4)
@@ -80,7 +70,7 @@ class TestOrbitalGrid:
         m = parse_gaussian_cube(str(multi))
         s = parse_gaussian_cube(str(single))
         assert m["orbital_ids"] == [15, 16, 17]  # 1-based cube ids
-        np.testing.assert_allclose(cube_component(m, 1)["data"], s["data"], atol=1e-5)
+        np.testing.assert_allclose(m["data"][..., 1], s["data"], atol=1e-5)
 
     def test_phase_is_fixed_by_largest_lobe(self):
         from frogchem.density_builder import fix_orbital_phase

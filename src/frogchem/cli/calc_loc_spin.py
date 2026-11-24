@@ -11,6 +11,7 @@ import numpy as np
 import periodictable as pt
 
 from frogchem.cli.base import CLICommand, Guide, Output
+from frogchem.orbital_character import parse_indices
 from frogchem.exceptions import InputError, ParseError
 from frogchem.grid import integrate_density_voronoi
 from frogchem.io import parse_gaussian_cube
@@ -19,19 +20,10 @@ from frogchem.printer import print_error, print_info, print_warning
 
 def parse_index_string(s: str) -> List[int]:
     """Parse '0-5, 8, 10' into a sorted list of 0-based indices (ranges are inclusive)."""
-    indices = set()
-    for part in s.replace(' ', '').split(','):
-        if not part:
-            continue
-        try:
-            if '-' in part:
-                start, end = map(int, part.split('-'))
-                indices.update(range(start, end + 1))
-            else:
-                indices.add(int(part))
-        except ValueError:
-            raise InputError(f"Invalid atom selection {part!r} (expected e.g. '0-5,8')") from None
-    return sorted(indices)
+    try:
+        return parse_indices(s)
+    except ValueError:
+        raise InputError(f"Invalid atom selection {s!r} (expected e.g. '0-5,8')") from None
 
 
 def parse_fragment(spec: str) -> tuple[str, List[int]]:
@@ -230,9 +222,6 @@ class CalcLocSpin(CLICommand, name='frog-spin'):
             fragments[name] = valid
             print_info(f"Fragment '{name}' added with {len(valid)} atoms")
 
-
-def parse_args():
-    return CalcLocSpin().build_parser().parse_args()
 
 
 def main():

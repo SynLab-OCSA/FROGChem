@@ -2,15 +2,12 @@
 
 Provides an Excel-like interactive spreadsheet, 1-click presets,
 smart TS/MECP peak auto-detection, copy-paste import, and manual plot generation
-with high-res export (PNG, SVG, PDF) and input.txt generation.
+with high-res export (PNG, SVG, PDF) and YAML input generation.
 """
 
 from __future__ import annotations
 
 import io
-import re
-import tempfile
-from pathlib import Path
 from typing import Any, Optional
 
 import matplotlib.pyplot as plt
@@ -28,18 +25,14 @@ from frogchem.reaction_plotter.config_manager import (
     save_preset,
 )
 from frogchem.reaction_plotter.gui_utils import (
-    auto_detect_peaks,
     auto_detect_ts,
-    build_dataframe_from_preset,
     compute_x_coords,
     dataframe_to_csv_bytes,
     extract_current_template,
     init_session_state,
     load_file_into_preset,
     parse_pasted_numbers,
-    safe_rerun,
 )
-from frogchem.reaction_plotter.plotter import ReactionProfilePlotter
 from frogchem.reaction_plotter.profile import ReactionProfileAnalyzer
 
 
@@ -128,7 +121,7 @@ def main() -> None:
             st.session_state.current_preset_name = chosen_preset
             p = PRESETS[chosen_preset]
             init_session_state(preset=p, preset_name=chosen_preset, force_reset=True)
-            safe_rerun()
+            st.rerun()
 
     with c_save_tmpl:
         st.markdown("<div style='margin-top: 4px;'></div>", unsafe_allow_html=True)
@@ -148,23 +141,23 @@ def main() -> None:
                 save_preset(clean_tmpl, tmpl_data)
                 st.session_state.current_preset_name = clean_tmpl
                 st.success(f"Template '{clean_tmpl}' saved!")
-                safe_rerun()
+                st.rerun()
 
     with c_upload:
         uploaded_file = st.file_uploader(
-            "📂 Load existing file (TXT or YAML):",
-            type=["txt", "yaml", "yml"],
-            help="Upload an existing FROG profile file (.txt, .yaml) to view, edit, or customize it.",
+            "📂 Load existing file (YAML):",
+            type=["yaml", "yml"],
+            help="Upload an existing frog-profile YAML file to view, edit, or customize it.",
         )
         if uploaded_file is not None:
             if "last_uploaded_name" not in st.session_state or st.session_state.last_uploaded_name != uploaded_file.name:
                 try:
                     content_str = uploaded_file.getvalue().decode("utf-8")
-                    parsed_preset = load_file_into_preset(content_str, filename=uploaded_file.name)
+                    parsed_preset = load_file_into_preset(content_str)
                     st.session_state.last_uploaded_name = uploaded_file.name
                     init_session_state(preset=parsed_preset, preset_name="Blank / Custom", force_reset=True)
                     st.success(f"Loaded '{uploaded_file.name}'!")
-                    safe_rerun()
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Error loading file: {e}")
 
@@ -173,7 +166,7 @@ def main() -> None:
         if st.button("🗑️ Clear All", help="Reset everything to a blank template."):
             blank_preset = PRESETS.get("Blank / Custom", DEFAULT_PRESETS["Blank / Custom"])
             init_session_state(preset=blank_preset, preset_name="Blank / Custom", force_reset=True)
-            safe_rerun()
+            st.rerun()
 
     # ── Sidebar Styling Controls ──────────────────────────────────────────────
     with st.sidebar:
@@ -236,13 +229,13 @@ def main() -> None:
                 st.session_state.chosen_palette = chosen_pal
                 for i, pm in enumerate(st.session_state.path_meta):
                     pm["color"] = pal_colors[i % len(pal_colors)]
-                safe_rerun()
+                st.rerun()
 
             if st.button("🔄 Apply to All Pathways", key="btn_reapply_palette", help="Instantly apply this palette across all reaction pathways.", use_container_width=True):
                 for i, pm in enumerate(st.session_state.path_meta):
                     pm["color"] = pal_colors[i % len(pal_colors)]
                 st.success(f"Applied '{chosen_pal}' to all pathways!")
-                safe_rerun()
+                st.rerun()
 
             # Save Custom Palette expander
             with st.expander("💾 Save as New Palette", expanded=False):
@@ -258,7 +251,7 @@ def main() -> None:
                         save_palette(clean_pal, current_colors)
                         st.session_state.chosen_palette = clean_pal
                         st.success(f"Palette '{clean_pal}' saved!")
-                        safe_rerun()
+                        st.rerun()
 
             st.markdown("---")
             st.session_state.point_type = st.selectbox(
@@ -323,7 +316,7 @@ def main() -> None:
                     st.session_state.fig_w = 6.90
                     st.session_state.fig_h = 3.70
                     st.session_state.font_size = 14
-                safe_rerun()
+                st.rerun()
 
             col_w, col_h = st.columns(2)
             with col_w:
@@ -374,7 +367,7 @@ def main() -> None:
                     st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
                     if st.button("White", key="btn_bg_white", use_container_width=True):
                         st.session_state.bg_color = "#FFFFFF"
-                        safe_rerun()
+                        st.rerun()
                 q_bgs = [
                     ("White", "#FFFFFF"),
                     ("Paper", "#FAFAFA"),
@@ -386,7 +379,7 @@ def main() -> None:
                     with sw_cols[sw_idx]:
                         if st.button(b_lbl, key=f"quick_bg_{sw_idx}", use_container_width=True):
                             st.session_state.bg_color = b_hex
-                            safe_rerun()
+                            st.rerun()
 
         with tab_sb_axes:
             _axes_options = ["none", "x", "y", "both", "box"]
@@ -454,17 +447,17 @@ def main() -> None:
             st.session_state.df["Show Energy?"] = [
                 bool(cur or is_p) for cur, is_p in zip(cur_shows, peaks)
             ]
-            safe_rerun()
+            st.rerun()
 
     with btn_c2:
         if st.button("🏷️ Show All", help="Show numerical energy labels for all steps on the plot."):
             st.session_state.df["Show Energy?"] = True
-            safe_rerun()
+            st.rerun()
 
     with btn_c3:
         if st.button("❌ Hide All", help="Hide numerical energy labels for all steps on the plot."):
             st.session_state.df["Show Energy?"] = False
-            safe_rerun()
+            st.rerun()
 
     with btn_csv:
         csv_bytes = dataframe_to_csv_bytes(st.session_state.df)
@@ -490,7 +483,7 @@ def main() -> None:
                     "color": cur_pal[c_idx],
                     "style": "solid",
                 })
-                safe_rerun()
+                st.rerun()
 
     # Ensure all pathway columns are float64 with np.nan for empty cells
     for col in path_cols:
@@ -559,7 +552,7 @@ def main() -> None:
         with leg_c2:
             if st.button("❌ Hide Legend" if is_leg else "✅ Show Legend", key="btn_toggle_legend_tab"):
                 st.session_state.show_legend = not is_leg
-                safe_rerun()
+                st.rerun()
         st.markdown("---")
         chosen_pal_name = st.session_state.get("chosen_palette", list(PALETTES.keys())[0])
         active_pal_colors = PALETTES.get(chosen_pal_name, list(PALETTES.values())[0])
@@ -619,10 +612,10 @@ def main() -> None:
 
                 if chosen_pref != cur_color:
                     m["color"] = chosen_pref
-                    safe_rerun()
+                    st.rerun()
                 elif picked_c != cur_color:
                     m["color"] = picked_c
-                    safe_rerun()
+                    st.rerun()
 
             with sc3:
                 m["style"] = st.selectbox(
@@ -636,7 +629,7 @@ def main() -> None:
                 if len(path_cols) > 1 and st.button("🗑️", key=f"del_{col_id}", help=f"Remove pathway {col_id}"):
                     st.session_state.df.drop(columns=[col_id], inplace=True)
                     st.session_state.path_meta = [pm for pm in st.session_state.path_meta if pm["col_name"] != col_id]
-                    safe_rerun()
+                    st.rerun()
 
         # Pathway-Specific Names (Visual Editor)
         multi_active_rows = []
@@ -679,7 +672,7 @@ def main() -> None:
                     changed_names = True
 
             if changed_names:
-                safe_rerun()
+                st.rerun()
 
     # ── Tab 2: Sections & Brackets ────────────────────────────────────────────
     with tab_sections:
@@ -723,7 +716,7 @@ def main() -> None:
         if to_del_sec:
             for d_i in sorted(to_del_sec, reverse=True):
                 st.session_state.sections_list.pop(d_i)
-            safe_rerun()
+            st.rerun()
 
         if st.button("➕ Add Section", key="btn_add_section"):
             n_existing = len(st.session_state.sections_list)
@@ -732,7 +725,7 @@ def main() -> None:
                 "start": 0,
                 "end": min(1, _n_steps_for_sec - 1) if _n_steps_for_sec > 1 else 0,
             })
-            safe_rerun()
+            st.rerun()
 
         if st.session_state.sections_list:
             st.markdown("---")
@@ -858,7 +851,7 @@ def main() -> None:
                         "title": f"{pt1['label']} vs {pt2['label']} (ΔΔG = {abs(ddg):.1f})",
                     })
                     st.success("Value added to plot!")
-                    safe_rerun()
+                    st.rerun()
             with add_c2:
                 st.session_state.show_ddg_indicator = st.checkbox(
                     r"Quick preview of this selection on plot",
@@ -894,7 +887,7 @@ def main() -> None:
                 if to_delete:
                     for d_idx in sorted(to_delete, reverse=True):
                         st.session_state.ddg_items.pop(d_idx)
-                    safe_rerun()
+                    st.rerun()
 
     # ── Tab 4: Data Helpers ───────────────────────────────────────────────────
     with tab_tools:
@@ -967,7 +960,7 @@ def main() -> None:
                         "style": br_style,
                     })
                     st.success(f"Branched pathway '{new_br_clean}' successfully created!")
-                    safe_rerun()
+                    st.rerun()
 
         with tool_col2:
             st.markdown("##### 📋 Quick Paste Helper")
@@ -1005,7 +998,7 @@ def main() -> None:
                         st.session_state.df.at[start_step + idx, target_path] = float(val) if (val is not None and pd.notna(val)) else np.nan
                     st.session_state.df[target_path] = pd.to_numeric(st.session_state.df[target_path], errors="coerce").astype("float64")
                     st.success(f"Pasted {len(parsed_vals)} values into '{target_path}' starting from step {start_step}!")
-                    safe_rerun()
+                    st.rerun()
 
 
     # ── Construct Profile and Manual Plot Trigger ─────────────────────────────
@@ -1026,11 +1019,7 @@ def main() -> None:
                 cur_p_step = int(st.session_state.get("photo_step", 0)) if st.session_state.has_photo else 0
                 x_coords = compute_x_coords(n_steps, st.session_state.has_photo, cur_p_step)
 
-                # Extract labelpoint indices
                 show_energy_col = list(st.session_state.df["Show Energy?"]) if "Show Energy?" in st.session_state.df.columns else list(st.session_state.df.get("Label Energy? (TS/MECP)", [False] * n_steps))
-                labelpoint_indices = [
-                    i for i, checked in enumerate(show_energy_col) if checked
-                ]
 
                 # Meta lookup
                 meta_lookup = {m["col_name"]: m for m in st.session_state.path_meta}
@@ -1062,22 +1051,6 @@ def main() -> None:
                     for p_col in active_path_cols:
                         per_path_step_labels[p_col].append(s_text if (p_col in row_active and s_text) else None)
 
-                # Construct input.txt content
-                lines = ["--# PES"]
-                for col in active_path_cols:
-                    vals = []
-                    for v in st.session_state.df[col]:
-                        if pd.isna(v) or v is None:
-                            vals.append("None")
-                        else:
-                            vals.append(str(round(float(v), 2)))
-                    lines.append("; ".join(vals))
-
-                lines.append("\n--# LABELS")
-                for col in active_path_cols:
-                    col_lbls = [str(l) if l is not None else "None" for l in per_path_step_labels[col]]
-                    lines.append("; ".join(col_lbls))
-
                 # Section brackets
                 valid_sections = []
                 for s in st.session_state.get("sections_list", []):
@@ -1089,40 +1062,6 @@ def main() -> None:
                         continue
                     if lbl and s_end > s_start:
                         valid_sections.append({"label": lbl, "start": s_start, "end": s_end})
-
-                lines.append("\n--# GRAPHS")
-                lines.append(f"title : {st.session_state.title}")
-                lines.append(f"label : {'; '.join(meta_lookup.get(col, {}).get('display_name', col) for col in active_path_cols)}")
-                lines.append(f"x : {'; '.join(str(x) for x in x_coords)}")
-                lines.append(f"colors : {'; '.join(meta_lookup.get(col, {}).get('color', '#103E84') for col in active_path_cols)}")
-                lines.append(f"style : {'; '.join(meta_lookup.get(col, {}).get('style', 'solid') for col in active_path_cols)}")
-                lines.append(f"figsize : {st.session_state.fig_w}; {st.session_state.fig_h}")
-                lines.append(f"font_size : {st.session_state.font_size}")
-                lines.append(f"units : {st.session_state.units}")
-                lines.append(f"marker : {st.session_state.point_type}")
-                lines.append(f"curviness : {float(round(st.session_state.curviness, 2))}")
-                lines.append(f"axes : {st.session_state.axes_style}")
-                lines.append("labels : true")
-                if labelpoint_indices:
-                    lines.append(f"labelpoint : {'; '.join(str(i) for i in labelpoint_indices)}")
-                if not st.session_state.show_xticks:
-                    lines.append("xticks : false")
-                if not st.session_state.get("show_legend", True):
-                    lines.append("legend : false")
-                if st.session_state.has_photo:
-                    lines.append(f"excitation : {cur_p_step}")
-                if valid_sections:
-                    lines.append(f"sections : {'; '.join(s['label'] for s in valid_sections)}")
-                    lines.append(f"sections_start : {'; '.join(str(s['start']) for s in valid_sections)}")
-                    lines.append(f"sections_end : {'; '.join(str(s['end']) for s in valid_sections)}")
-                    lines.append(f"sections_shift : {float(round(st.session_state.get('sections_shift', 0.05), 3))}")
-                if st.session_state.get("transparent_bg", False):
-                    lines.append("transparent : true")
-                elif st.session_state.get("bg_color"):
-                    lines.append(f"bg_color : {st.session_state.bg_color}")
-                lines.append("save : false\n")
-
-                txt_content = "\n".join(lines)
 
                 # Construct YAML content
                 yaml_dict: dict[str, Any] = {
@@ -1221,11 +1160,7 @@ def main() -> None:
                 yaml_content = yaml.dump(yaml_dict, sort_keys=False, allow_unicode=True)
 
                 try:
-                    with tempfile.NamedTemporaryFile("w+", suffix=".yaml", delete=False) as tmp:
-                        tmp.write(yaml_content)
-                        tmp_file = tmp.name
-
-                    analyzer = ReactionProfileAnalyzer(tmp_file, auto_plot=False)
+                    analyzer = ReactionProfileAnalyzer(content=yaml_content)
                     is_trans = bool(st.session_state.get("transparent_bg", False))
                     bg_c = st.session_state.get("bg_color", "#FFFFFF")
 
@@ -1336,7 +1271,6 @@ def main() -> None:
                         "svg": svg_buf.getvalue(),
                         "pdf": pdf_buf.getvalue(),
                         "yaml": yaml_content,
-                        "txt": txt_content,
                     }
 
                 except Exception as err:
@@ -1384,25 +1318,15 @@ def main() -> None:
             )
 
     with col_export:
-        tab_yaml, tab_txt, tab_csv = st.tabs(["✨ YAML (Recommended)", "📄 Classic TXT", "📊 CSV Data"])
+        tab_yaml, tab_csv = st.tabs(["✨ YAML", "📊 CSV Data"])
         with tab_yaml:
-            st.caption("Clean, human-readable modern input format.")
+            st.caption("Input file for frog-profile.")
             st.code(res["yaml"], language="yaml")
             st.download_button(
                 label="💾 Download profile.yaml",
                 data=res["yaml"],
                 file_name="profile.yaml",
                 mime="application/x-yaml",
-                use_container_width=True,
-            )
-        with tab_txt:
-            st.caption("Legacy section-based input format.")
-            st.code(res["txt"], language="ini")
-            st.download_button(
-                label="💾 Download input.txt",
-                data=res["txt"],
-                file_name="input.txt",
-                mime="text/plain",
                 use_container_width=True,
             )
         with tab_csv:

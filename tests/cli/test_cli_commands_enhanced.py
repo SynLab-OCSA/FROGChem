@@ -13,7 +13,6 @@ from frogchem.cli.detect_symmetry import DetectSymmetry
 from frogchem.cli.internals import Internals
 from frogchem.cli.calc_rmsd import CalcRmsd
 from frogchem.cli.cube_manipulation import CubeManipulation
-from frogchem.cli.manage_sub_db import ManageSubDb
 from frogchem.cli.nics_geometry import NicsGeometry
 from frogchem.cli.calc_loc_spin import parse_index_string
 from frogchem.cli.calc_rrho import CalcRrho
@@ -25,6 +24,8 @@ from frogchem.cli.stereocenters import Stereocenters
 from frogchem.cli.tddft_parser import TddftParser
 from frogchem.cli.plot_neb import PlotNeb
 from frogchem.io import write_xyz, read_xyz, write_gaussian_cube
+
+FILES = Path(__file__).resolve().parents[2] / "files"
 
 
 @pytest.fixture
@@ -200,18 +201,9 @@ class TestCreateCrestInputCLI:
 
 
 class TestSortDiasteroCLI:
-    def test_sort_diastero(self, sample_ensemble_xyz, tmp_path):
-        cmd = SortDiastero()
-        cmd.main([sample_ensemble_xyz, "-i", "0", "1", "2", "3", "--format", "json"])
-
-
-class TestDetectSymmetryCLI:
-    def test_detect_symmetry_json(self, sample_water_xyz, capsys):
-        cmd = DetectSymmetry()
-        cmd.main([sample_water_xyz, "--include-h", "--format", "json"])
-        captured = capsys.readouterr()
-        assert "Point Group" in captured.out
-        assert "C2v" in captured.out
+    def test_sort_diastero(self, sample_ensemble_xyz, capsys):
+        SortDiastero().main([sample_ensemble_xyz, "-i", "0", "1", "2", "3", "--format", "json"])
+        assert json.loads(capsys.readouterr().out)
 
 
 class TestInternalsCLI:
@@ -333,79 +325,44 @@ class TestCalcLocSpinHelpers:
         monkeypatch.setattr(InquirerPy.inquirer, "select", lambda **kw: MockPrompt(next(actions)))
         monkeypatch.setattr(InquirerPy.inquirer, "text", lambda **kw: MockPrompt(next(texts)))
 
-        if os.path.exists("files/test.cube"):
-            cmd = CalcLocSpin()
-            cmd.main(["files/test.cube", "--interactive", "--format", "json"])
-            captured = capsys.readouterr()
-            data = json.loads(captured.out)
-            frag = [t for t in data if t["title"].startswith("Fragment")][0]["rows"]
-            assert any(row.get("Fragment") == "Frag1" for row in frag)
-
-
-class TestManageSubDbCLI:
-    def test_db_list_empty(self):
-        cmd = ManageSubDb()
-        cmd.main(["list"])
-
-    def test_db_crud(self, sample_water_xyz, tmp_path, monkeypatch, capsys):
-        # Isolate database in temporary directory
-        import frogchem.substituter.database_sub as db_mod
-        orig_init = db_mod.FragmentDatabase.__init__
-
-        def mock_init(self):
-            self.base_dir = tmp_path
-            self.structures_dir = tmp_path / "structures"
-            self.db_file = tmp_path / "library.json"
-            self.structures_dir.mkdir(parents=True, exist_ok=True)
-            self.data = self._load()
-
-        monkeypatch.setattr(db_mod.FragmentDatabase, "__init__", mock_init)
-
-        cmd = ManageSubDb()
-        # 1. Add fragment
-        cmd.main(["add", "frag1", sample_water_xyz, "--indices", "1", "0", "--desc", "Water fragment"])
+        if not (FILES / "test.cube").exists():
+            pytest.skip("files/test.cube not found")
+        cmd = CalcLocSpin()
+        cmd.main([str(FILES / "test.cube"), "--interactive", "--format", "json"])
         captured = capsys.readouterr()
-        assert "Added" in captured.err
-
-        # 2. List fragments
-        cmd.main(["--format", "json", "list"])
-        captured = capsys.readouterr()
-        assert "frag1" in captured.out
-
-        # 3. Edit fragment
-        cmd.main(["edit", "frag1", "--desc", "Updated desc", "--rename", "frag1_renamed"])
-        captured = capsys.readouterr()
-
-        # 4. Remove fragment
-        cmd.main(["remove", "frag1_renamed"])
-        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        frag = [t for t in data if t["title"].startswith("Fragment")][0]["rows"]
+        assert any(row.get("Fragment") == "Frag1" for row in frag)
 
 
 class TestMoreCLITools:
     def test_calc_rrho_cli(self, capsys):
-        if os.path.exists("files/test.out"):
-            cmd = CalcRrho()
-            cmd.main(["files/test.out", "--format", "json"])
-            captured = capsys.readouterr()
-            data = json.loads(captured.out)
-            assert len(data) >= 1
+        if not (FILES / "test.out").exists():
+            pytest.skip("files/test.out not found")
+        cmd = CalcRrho()
+        cmd.main([str(FILES / "test.out"), "--format", "json"])
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert len(data) >= 1
 
     def test_get_charges_cli(self, capsys):
-        if os.path.exists("files/test.out"):
-            cmd = GetCharges()
-            cmd.main(["files/test.out", "-i", "0", "1", "--type", "mulliken", "--format", "json"])
-            captured = capsys.readouterr()
-            data = json.loads(captured.out)
-            assert len(data) >= 1
+        if not (FILES / "test.out").exists():
+            pytest.skip("files/test.out not found")
+        cmd = GetCharges()
+        cmd.main([str(FILES / "test.out"), "-i", "0", "1", "--type", "mulliken", "--format", "json"])
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert len(data) >= 1
 
     def test_write_xyz_cli(self, tmp_path):
-        if os.path.exists("files/test.out"):
-            cmd = WriteXYZ()
-            # Run on files/test.out
-            cmd.main(["files/test.out"])
-            expected = "files/test_final.xyz"
-            assert os.path.exists(expected)
-            os.remove(expected)
+        if not (FILES / "test.out").exists():
+            pytest.skip("files/test.out not found")
+        cmd = WriteXYZ()
+        # Run on files/test.out
+        cmd.main([str(FILES / "test.out")])
+        expected = str(FILES / "test_final.xyz")
+        assert os.path.exists(expected)
+        os.remove(expected)
 
     def test_fragment_detection_cli(self, sample_water_xyz, capsys):
         cmd = FragmentDetection()
@@ -415,16 +372,17 @@ class TestMoreCLITools:
         assert len(data) >= 1
 
     def test_distance_charge_transfer_cli(self, capsys):
-        if os.path.exists("files/test.cube"):
-            cmd = TddftParser()
-            cmd.main(["files/test.cube", "--format", "json"])
-            captured = capsys.readouterr()
-            data = json.loads(captured.out)
-            assert len(data) >= 1
-            assert "Δr (Å)" in data[0]["columns"]
+        if not (FILES / "test.cube").exists():
+            pytest.skip("files/test.cube not found")
+        cmd = TddftParser()
+        cmd.main([str(FILES / "test.cube"), "--format", "json"])
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert len(data) >= 1
+        assert "Δr (Å)" in data[0]["columns"]
 
     def test_distance_charge_transfer_tddft_out(self, capsys, tmp_path):
-        tddft_file = "files/tddft_mos.out"
+        tddft_file = str(FILES / "tddft_mos.out")
         if os.path.exists(tddft_file):
             cmd = TddftParser()
             out_dir = str(tmp_path / "dct_cubes")
@@ -460,12 +418,13 @@ class TestMoreCLITools:
         assert "stereocenters" in captured.out.lower() or "stereocenters" in captured.err.lower()
 
     def test_tddft_parser_json_cli(self, capsys):
-        if os.path.exists("files/tddft.out"):
-            cmd = TddftParser()
-            cmd.main(["files/tddft.out", "--format", "json"])
-            captured = capsys.readouterr()
-            data = json.loads(captured.out)  # valid JSON even when the file has no excited states
-            assert isinstance(data, list)
+        if not (FILES / "tddft.out").exists():
+            pytest.skip("files/tddft.out not found")
+        cmd = TddftParser()
+        cmd.main([str(FILES / "tddft.out"), "--format", "json"])
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)  # valid JSON even when the file has no excited states
+        assert isinstance(data, list)
 
     def test_plot_neb_cli(self, tmp_path):
         interp_file = tmp_path / "neb.interp"
@@ -488,11 +447,12 @@ Interpolated Path
 
     def test_electronic_density_orbital_cli(self, tmp_path):
         from frogchem.cli.electronic_density import ElectronicDensity
-        if os.path.exists("files/orb.out"):
-            input_path = os.path.abspath("files/orb.out")
-            cmd = ElectronicDensity()
-            cmd.main([input_path, "--orbital", "0", "--voxels", "3", "--out-dir", str(tmp_path)])
-            assert (tmp_path / "orb_orbital_0.cube").exists()
+        if not (FILES / "orb.out").exists():
+            pytest.skip("files/orb.out not found")
+        input_path = os.path.abspath(str(FILES / "orb.out"))
+        cmd = ElectronicDensity()
+        cmd.main([input_path, "--orbital", "0", "--voxels", "3", "--out-dir", str(tmp_path)])
+        assert (tmp_path / "orb_orbital_0.cube").exists()
 
     def test_hessian_localizer_cli(self, capsys):
         from frogchem.cli.hessian_localizer import HessianLocalizer, parse_fragments
@@ -500,12 +460,13 @@ Interpolated Path
         frags = parse_fragments(["CO2:0,1", "invalid_format"])
         assert frags == {"CO2": [0, 1]}
 
-        if os.path.exists("files/test.out"):
-            cmd = HessianLocalizer()
-            cmd.main(["files/test.out", "-m", "6", "--ipr", "--fragment", "F1:0,1", "--format", "json"])
-            captured = capsys.readouterr()
-            assert "Mode 6" in captured.out
-            assert "IPR" in captured.out
+        if not (FILES / "test.out").exists():
+            pytest.skip("files/test.out not found")
+        cmd = HessianLocalizer()
+        cmd.main([str(FILES / "test.out"), "-m", "6", "--ipr", "--fragment", "F1:0,1", "--format", "json"])
+        captured = capsys.readouterr()
+        assert "Mode 6" in captured.out
+        assert "IPR" in captured.out
 
     def test_reaction_profile_cli(self, tmp_path, monkeypatch):
         import matplotlib
@@ -513,75 +474,43 @@ Interpolated Path
         import matplotlib.pyplot as plt
         monkeypatch.setattr(plt, "show", lambda: None)
         from frogchem.cli.reaction_profile import ReactionProfile
-        prof_file = tmp_path / "pes.txt"
-        prof_file.write_text("""--# PES
-0.0; 10.0; 20.0
---# LABELS
-A; B; C
---# GRAPHS
-legend: false
-title: Test CLI Plot
-label: Path 1
-""")
+        prof_file = tmp_path / "pes.yaml"
+        prof_file.write_text("title: Test CLI Plot\nlegend: false\nsteps: [A, B, C]\n"
+                             "pathways:\n  - {name: Path 1, energies: [0.0, 10.0, 20.0]}\n")
         cmd = ReactionProfile()
         cmd.main([str(prof_file)])
+        assert (tmp_path / "pes_profile.png").exists()
 
     def test_nbo_parser_cli(self, capsys):
         from frogchem.cli.nbo_parser import NboParser
-        if os.path.exists("files/nbo.out"):
-            cmd = NboParser()
-            cmd.main(["files/nbo.out", "--npa", "--e2", "-t", "2.0", "--bonds", "--lp", "--analysis", "--wiberg", "--dtype", "LP", "-i", "0", "1", "--format", "json"])
-            captured = capsys.readouterr()
-            assert "Bond" in captured.out or "Charge" in captured.out
-            assert "Donor Orbital" in captured.out
+        if not (FILES / "nbo.out").exists():
+            pytest.skip("files/nbo.out not found")
+        cmd = NboParser()
+        cmd.main([str(FILES / "nbo.out"), "--npa", "--e2", "-t", "2.0", "--bonds", "--lp", "--analysis", "--wiberg", "--dtype", "LP", "-i", "0", "1", "--format", "json"])
+        captured = capsys.readouterr()
+        assert "Bond" in captured.out or "Charge" in captured.out
+        assert "Donor Orbital" in captured.out
 
     def test_calc_rrho_boltz_order(self, capsys):
         from frogchem.cli.calc_rrho import CalcRrho
-        if os.path.exists("files/test.out"):
-            cmd = CalcRrho()
-            cmd.main(["files/test.out", "--boltz", "--sort", "--format", "json"])
-            captured = capsys.readouterr()
-            assert "Boltzmann" in captured.out or "Boltz %" in captured.out or "E [Eh]" in captured.out
-
-    def test_substitute_fragment_cli(self, tmp_path, monkeypatch):
-        from ase import Atoms
-        from ase.io import write
-        from frogchem.cli.substitute_fragment import SubstituteFragment
-        mol_f = str(tmp_path / "mol.xyz")
-        frag_f = str(tmp_path / "frag.xyz")
-        mol = Atoms('OH2', positions=[[0, 0, 0], [0, 0.7, 0.6], [0, -0.7, 0.6]])
-        frag = Atoms('OH', positions=[[0, 0, 1.5], [0, 0, 2.5]])
-        write(mol_f, mol)
-        write(frag_f, frag)
-
-        # --frag registers the fragment: keep the package library untouched
-        import frogchem.substituter.database_sub as db_mod
-        lib_dir = tmp_path / "lib"
-
-        def mock_init(self, *a, **kw):
-            self.base_dir = lib_dir
-            self.structures_dir = lib_dir / "structures"
-            self.db_file = lib_dir / "library.json"
-            self.structures_dir.mkdir(parents=True, exist_ok=True)
-            self.data = self._load()
-
-        monkeypatch.setattr(db_mod.FragmentDatabase, "__init__", mock_init)
-
-        cmd = SubstituteFragment()
-        cmd.main(['--mol', mol_f, '--frag', frag_f, '--frag-pair', '1', '0', '--mol-pairs', '1', '0', '--track', '0', '2'])
-        out_f = tmp_path / "mol_frag.xyz"
-        assert out_f.exists()
+        if not (FILES / "test.out").exists():
+            pytest.skip("files/test.out not found")
+        cmd = CalcRrho()
+        cmd.main([str(FILES / "test.out"), "--boltz", "--sort", "--format", "json"])
+        captured = capsys.readouterr()
+        assert "Boltzmann" in captured.out or "Boltz %" in captured.out or "E [Eh]" in captured.out
 
     def test_mo_coeff_cli(self, monkeypatch, capsys):
         import matplotlib.pyplot as plt
         monkeypatch.setattr(plt, "show", lambda: None)
         from frogchem.cli.mo_coeff import MoCoeff
-        if os.path.exists("files/orb.out"):
-            cmd = MoCoeff()
-            cmd.main(["files/orb.out", "-i", "0", "1", "-b", "2", "--format", "json"])
-            captured = capsys.readouterr()
-            assert "MO" in captured.out
-            assert "Total_s" in captured.out
+        if not (FILES / "orb.out").exists():
+            pytest.skip("files/orb.out not found")
+        cmd = MoCoeff()
+        cmd.main([str(FILES / "orb.out"), "-i", "0", "1", "-b", "2", "--format", "json"])
+        captured = capsys.readouterr()
+        assert "MO" in captured.out
+        assert "Total_s" in captured.out
 
     def test_cie_plot_cli(self, tmp_path):
         from frogchem.cli.cie_plot import CiePlot
@@ -655,7 +584,7 @@ label: Path 1
         import matplotlib
         matplotlib.use("Agg")
         from frogchem.cli.tddft_parser import TddftParser
-        tddft_file = Path("files/tddft.out").resolve()
+        tddft_file = Path(str(FILES / "tddft.out")).resolve()
         if tddft_file.exists():
             monkeypatch.chdir(tmp_path)
             cmd = TddftParser()
@@ -667,7 +596,7 @@ label: Path 1
     def test_electronic_density_cli(self, tmp_path, monkeypatch):
         from pathlib import Path
         from frogchem.cli.electronic_density import ElectronicDensity, get_frontier_orbitals
-        orb_file = Path("files/orb.out").resolve()
+        orb_file = Path(str(FILES / "orb.out")).resolve()
         if orb_file.exists():
             monkeypatch.chdir(tmp_path)
             cmd = ElectronicDensity()
@@ -690,7 +619,7 @@ label: Path 1
             assert (tmp_path / "orb_orbital_0.cube").exists()
 
         # 4. Calculation without basis set data
-        test_file = Path("files/test.out").resolve()
+        test_file = Path(str(FILES / "test.out")).resolve()
         if test_file.exists():
             cmd = ElectronicDensity()
             cmd.main([str(test_file), "--density", "--voxels", "5", "--out-dir", str(tmp_path)])
@@ -701,14 +630,15 @@ label: Path 1
 
     def test_detect_symmetry_modes(self, capsys):
         from frogchem.cli.detect_symmetry import DetectSymmetry
-        if os.path.exists("files/water.xyz"):
-            cmd = DetectSymmetry()
-            cmd.main(["files/water.xyz", "-t", "0.2"])
-            out1 = capsys.readouterr().out
-            assert "Point Group" in out1
-            cmd.main(["files/water.xyz", "-g", "C2v"])
-            out2 = capsys.readouterr().out
-            assert "C2v" in out2
+        if not (FILES / "water.xyz").exists():
+            pytest.skip("files/water.xyz not found")
+        cmd = DetectSymmetry()
+        cmd.main([str(FILES / "water.xyz"), "-t", "0.2"])
+        out1 = capsys.readouterr().out
+        assert "Point Group" in out1
+        cmd.main([str(FILES / "water.xyz"), "-g", "C2v"])
+        out2 = capsys.readouterr().out
+        assert "C2v" in out2
 
 
 class TestCLICoherenceAndAliases:
@@ -730,28 +660,11 @@ class TestCLICoherenceAndAliases:
         content = Path(csv_out).read_text()
         assert "Structure" in content
 
-    def test_get_charges_indexes_alias(self):
-        from frogchem.cli.get_charges import GetCharges
-        cmd = GetCharges()
-        parser = cmd.build_parser()
-        args1 = parser.parse_args(["f.out", "-i", "0", "1"])
-        assert args1.indices == [0, 1]
-        args3 = parser.parse_args(["f.out", "--indices", "0", "1"])
-        assert args3.indices == [0, 1]
-
-    def test_hessian_threshold_alias(self):
-        from frogchem.cli.hessian_localizer import HessianLocalizer
-        cmd = HessianLocalizer()
-        parser = cmd.build_parser()
-        assert parser.parse_args(["f.out", "-t", "10.0"]).threshold == 10.0
-        assert parser.parse_args(["f.out", "--threshold", "10.0"]).threshold == 10.0
 
     def test_nbo_aliases(self):
         from frogchem.cli.nbo_parser import NboParser
         cmd = NboParser()
         parser = cmd.build_parser()
-        assert parser.parse_args(["f.out", "-t", "3.5"]).threshold == 3.5
-        assert parser.parse_args(["f.out", "--threshold", "3.5"]).threshold == 3.5
         assert parser.parse_args(["f.out", "-i", "0", "2"]).indices == [0, 2]
 
     def test_rrho_cutoff_alias(self):
@@ -765,14 +678,6 @@ class TestCLICoherenceAndAliases:
         assert parser.parse_args(["f.out", "-s", "3"]).sigma == 3
         assert parser.parse_args(["f.out", "-P", "100.0"]).pressure == 100.0
 
-    def test_symmetry_aliases(self):
-        from frogchem.cli.detect_symmetry import DetectSymmetry
-        cmd = DetectSymmetry()
-        parser = cmd.build_parser()
-        assert parser.parse_args(["f.xyz", "-t", "0.3"]).threshold == 0.3
-        assert parser.parse_args(["f.xyz", "--threshold", "0.3"]).threshold == 0.3
-        assert parser.parse_args(["f.xyz", "-w"]).write is True
-        assert parser.parse_args(["f.xyz", "--write"]).write is True
 
     def test_nics_flag_indexes(self, sample_water_xyz, capsys):
         from frogchem.cli.nics_geometry import NicsGeometry

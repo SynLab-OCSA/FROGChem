@@ -1,5 +1,5 @@
 import pytest
-from frogchem.exceptions import FrogError, ParseError, InputError, ConfigError, report
+from frogchem.exceptions import FrogError, ParseError, InputError, report
 
 
 class TestExceptionHierarchy:
@@ -8,9 +8,6 @@ class TestExceptionHierarchy:
 
     def test_input_error_is_frog_error(self):
         assert issubclass(InputError, FrogError)
-
-    def test_config_error_is_frog_error(self):
-        assert issubclass(ConfigError, FrogError)
 
     def test_frog_error_is_exception(self):
         assert issubclass(FrogError, Exception)

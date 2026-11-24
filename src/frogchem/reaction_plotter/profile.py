@@ -1,34 +1,26 @@
-"""Main class to analyze, parse, and plot reaction profiles.
-
-Supports both formatted TXT files (--# PES, --# LABELS, --# GRAPHS)
-and JSON specification files (pathways dictionary or energy arrays).
-"""
+"""Parse and plot reaction profiles from YAML input (see the Reaction Profiles user guide)."""
 
 from __future__ import annotations
 
-import json
 import logging
-import re
-import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import yaml
 
-from frogchem.reaction_plotter.plotter import PlotConfig, ReactionPlotter, ReactionProfilePlotter
+from frogchem.reaction_plotter.plotter import PlotConfig, ReactionProfilePlotter
 
 logger = logging.getLogger(__name__)
 
 
 class ReactionProfileAnalyzer:
-    """Main class to analyze, parse, and plot reaction profiles from TXT, JSON, or dicts."""
+    """Parse a YAML reaction profile (file or string) and plot it with ``plot()``."""
 
     def __init__(
         self,
         filename: Optional[Union[str, Path]] = None,
         content: Optional[str] = None,
-        auto_plot: bool = True,
     ):
         self.filename: Optional[Path] = Path(filename) if filename is not None else None
         self.file_content: str = content or ""
@@ -40,126 +32,28 @@ class ReactionProfileAnalyzer:
         self.pathways: Dict[str, Any] = {}
         self.energy_data: Dict[str, List[Optional[float]]] = {}
         self.point_labels: Dict[str, List[Optional[str]]] = {}
-        self.annotations: Dict[str, Tuple[float, float]] = {}
 
         if self.filename is not None:
-            self._process_file()
-            if auto_plot:
-                self._create_plots()
+            if not self.filename.exists():
+                raise FileNotFoundError(f"Input file '{self.filename}' not found")
+            self.file_content = self.filename.read_text(encoding="utf-8")
+            self._process_content()
         elif self.file_content:
             self._process_content()
-            if auto_plot:
-                self._create_plots()
-
-    @classmethod
-    def from_json(
-        cls,
-        source: Union[str, Path, dict],
-        auto_plot: bool = False,
-        **kwargs: Any,
-    ) -> 'ReactionProfileAnalyzer':
-        """Load reaction profile from a JSON file path, JSON string, or dictionary."""
-        instance = cls(auto_plot=False)
-        if isinstance(source, dict):
-            instance.file_content = json.dumps(source)
-            instance._parse_json_dict(source)
-        else:
-            p = Path(source)
-            if p.exists() and p.is_file():
-                instance.filename = p
-                instance.file_content = p.read_text(encoding="utf-8")
-                data = json.loads(instance.file_content)
-                instance._parse_json_dict(data)
-            else:
-                # String content
-                instance.file_content = str(source)
-                data = json.loads(instance.file_content)
-                instance._parse_json_dict(data)
-
-        if auto_plot:
-            instance.plot(**kwargs)
-        return instance
-
-    @classmethod
-    def from_txt(
-        cls,
-        source: Union[str, Path],
-        auto_plot: bool = False,
-        **kwargs: Any,
-    ) -> 'ReactionProfileAnalyzer':
-        """Load reaction profile from a formatted TXT file path or string."""
-        instance = cls(auto_plot=False)
-        p = Path(source)
-        if p.exists() and p.is_file():
-            instance.filename = p
-            instance.file_content = p.read_text(encoding="utf-8")
-        else:
-            instance.file_content = str(source)
-        instance._process_content()
-        if auto_plot:
-            instance.plot(**kwargs)
-        return instance
-
-    @classmethod
-    def from_dict(
-        cls,
-        data: dict,
-        auto_plot: bool = False,
-        **kwargs: Any,
-    ) -> 'ReactionProfileAnalyzer':
-        """Load reaction profile directly from a dictionary."""
-        return cls.from_json(data, auto_plot=auto_plot, **kwargs)
 
     # ── Processing & Parsing ────────────────────────────────────────────────
 
-    def _process_file(self) -> None:
-        """Process input file, auto-detecting JSON or TXT format."""
-        if self.filename is None:
-            raise ValueError("No filename specified")
-        if not self.filename.exists():
-            raise FileNotFoundError(f"Input file '{self.filename}' not found")
-
-        self.file_content = self.filename.read_text(encoding="utf-8")
-        self._process_content()
-
     def _process_content(self) -> None:
-        """Parse file content as JSON, YAML, or TXT."""
-        stripped = self.file_content.strip()
-        if not stripped:
+        """Parse the content as YAML (JSON following the same schema also loads)."""
+        if not self.file_content.strip():
             raise ValueError("Input content is empty")
-
-        # 1. JSON
-        if stripped.startswith("{") or (self.filename and self.filename.suffix.lower() == ".json"):
-            try:
-                data = json.loads(stripped)
-                if isinstance(data, dict):
-                    self._parse_json_dict(data)
-                    return
-            except json.JSONDecodeError as exc:
-                if self.filename and self.filename.suffix.lower() == ".json":
-                    raise ValueError(f"Invalid JSON in '{self.filename}': {exc}") from exc
-
-        # 2. YAML
-        is_yaml_ext = self.filename and self.filename.suffix.lower() in (".yaml", ".yml")
-        has_yaml_keys = not stripped.startswith("--#") and any(
-            re.search(rf"(^|\n)\s*{k}\s*:", stripped)
-            for k in ("pathways", "steps", "energies", "title")
-        )
-
-        if is_yaml_ext or has_yaml_keys:
-            try:
-                data = yaml.safe_load(stripped)
-                if isinstance(data, dict):
-                    self._parse_yaml_dict(data)
-                    return
-            except Exception as exc:
-                if is_yaml_ext:
-                    raise ValueError(f"Invalid YAML in '{self.filename}': {exc}") from exc
-
-        # 3. Fallback to TXT sections
-        self._parse_sections()
-        self._validate_and_normalize_config()
-        self._sync_high_level_data()
+        try:
+            data = yaml.safe_load(self.file_content)
+        except yaml.YAMLError as exc:
+            raise ValueError(f"Invalid YAML: {exc}") from exc
+        if not isinstance(data, dict):
+            raise ValueError("Input must be a YAML mapping (steps:, pathways:, ...)")
+        self._parse_yaml_dict(data)
 
     def _parse_yaml_dict(self, data: dict[str, Any]) -> None:
         """Parse structured YAML/dictionary configuration into profile data structures."""
@@ -398,357 +292,6 @@ class ReactionProfileAnalyzer:
                 steps_list.append({"name": step_name, "energy": e_val})
             self.pathways[p_name] = steps_list
 
-    def _read_file(self) -> None:
-        """Read input file (legacy method for backwards compatibility)."""
-        if self.filename is None:
-            raise ValueError("No filename specified")
-        if not self.filename.exists():
-            raise FileNotFoundError(f"Input file '{self.filename}' not found")
-        self.file_content = self.filename.read_text(encoding="utf-8")
-
-    def _parse_sections(self) -> None:
-        """Parse TXT file sections (--# PES, --# LABELS, --# GRAPHS)."""
-        raw_sections = [
-            section.strip().split('\n')
-            for section in self.file_content.split('--# ')[1:]
-            if section.strip()
-        ]
-
-        section_map: dict[str, list[str]] = {}
-        for s in raw_sections:
-            sec_name = s[0].strip().upper()
-            section_map[sec_name] = s[1:]
-
-        pes_section = section_map.get("PES", [])
-        if not pes_section and raw_sections:
-            pes_section = raw_sections[0][1:]
-
-        labels_section = section_map.get("LABELS", [])
-        if not labels_section and len(raw_sections) >= 2 and raw_sections[1][0].strip().upper() != "GRAPHS":
-            labels_section = raw_sections[1][1:]
-
-        graphs_section = section_map.get("GRAPHS", [])
-        if not graphs_section and len(raw_sections) >= 3:
-            graphs_section = raw_sections[2][1:]
-        elif not graphs_section and len(raw_sections) == 2 and raw_sections[1][0].strip().upper() == "GRAPHS":
-            graphs_section = raw_sections[1][1:]
-
-        if not pes_section:
-            raise ValueError("Input file must contain at least a PES section")
-
-        # Parse labels first so PES branching can resolve step names like @II:
-        self.labels = []
-        for line in labels_section:
-            if not line.strip() or line.strip().startswith('#'):
-                continue
-            line_str = line.strip()
-            if ';' in line_str:
-                raw_tokens = [t.strip() for t in line_str.split(';')]
-            elif ',' in line_str and '$' not in line_str:
-                raw_tokens = [t.strip() for t in line_str.split(',')]
-            else:
-                raw_tokens = [t.strip() for t in line_str.split(';')]
-            if raw_tokens and raw_tokens[-1] == '':
-                raw_tokens = raw_tokens[:-1]
-            lbls = []
-            for t in raw_tokens:
-                if not t or t.lower() in ('none', '-'):
-                    lbls.append(None)
-                else:
-                    lbls.append(t)
-            self.labels.append(lbls)
-
-        step_names_lookup: dict[str, int] = {}
-        if self.labels:
-            for idx, name in enumerate(self.labels[0]):
-                if name:
-                    step_names_lookup[str(name).strip()] = idx
-                    clean_name = re.sub(r"[\$\\mathbf\{\}\\\s]", "", str(name))
-                    step_names_lookup[clean_name] = idx
-
-        # Parse PES data
-        self.pes_data = []
-        parsed_path_names: list[str] = []
-        for line in pes_section:
-            if not line.strip() or line.strip().startswith('#'):
-                continue
-            line_str = line.strip()
-
-            # Optional pathway name prefix: e.g. "Trunk: 0.0; ..." or "SET: @II: ..."
-            # Note: ignore if it starts directly with @ or branch
-            if ':' in line_str:
-                part0, part1 = line_str.split(':', 1)
-                p0 = part0.strip()
-                if not p0.startswith('@') and not p0.lower().startswith('branch'):
-                    parsed_path_names.append(p0)
-                    line_str = part1.strip()
-
-            # Support @<offset>: or branch <offset>: (integer or species name)
-            branch_offset = 0
-            if (line_str.startswith('@') or line_str.lower().startswith('branch')) and ':' in line_str:
-                prefix, line_str = line_str.split(':', 1)
-                tag = prefix[1:].strip() if prefix.startswith('@') else prefix[6:].strip()
-                try:
-                    branch_offset = int(tag)
-                except ValueError:
-                    tag_clean = re.sub(r"[\$\\mathbf\{\}\\\s]", "", tag)
-                    if tag in step_names_lookup:
-                        branch_offset = step_names_lookup[tag]
-                    elif tag_clean in step_names_lookup:
-                        branch_offset = step_names_lookup[tag_clean]
-                    else:
-                        branch_offset = 0
-
-            if ';' in line_str:
-                raw_tokens = [t.strip() for t in line_str.split(';')]
-            elif ',' in line_str:
-                raw_tokens = [t.strip() for t in line_str.split(',')]
-            else:
-                raw_tokens = line_str.split()
-            if raw_tokens and raw_tokens[-1] == '':
-                raw_tokens = raw_tokens[:-1]
-
-            vals = [np.nan] * branch_offset
-            for t in raw_tokens:
-                if not t:
-                    vals.append(np.nan)
-                else:
-                    tl = t.lower()
-                    if tl in ('none', 'nan', '-'):
-                        vals.append(np.nan)
-                    else:
-                        vals.append(float(t))
-            self.pes_data.append(np.array(vals, dtype=float))
-
-        if len(self.labels) == 1 and len(self.pes_data) > 1:
-            self.labels *= len(self.pes_data)
-        elif len(self.labels) == 0 and len(self.pes_data) > 0:
-            self.labels = [[None] * len(p) for p in self.pes_data]
-
-        # Parse graph parameters
-        graph_params: dict[str, list[str]] = {}
-        for line in graphs_section:
-            if line.strip() and not line.startswith('#'):
-                parts = line.split(':', 1)
-                if len(parts) == 2:
-                    key, value = parts
-                    k_clean = key.strip().lower()
-                    val_str = value.strip()
-                    if ';' in val_str:
-                        items = [val.strip() for val in val_str.split(';') if val.strip()]
-                    elif ',' in val_str and k_clean in ('figsize', 'labelpoint', 'zero', 'linewidth', 'x', 'sections_start', 'sections_end'):
-                        items = [val.strip() for val in val_str.split(',') if val.strip()]
-                    else:
-                        items = [val.strip() for val in val_str.split(';') if val.strip()]
-                    graph_params[k_clean] = items
-
-        if parsed_path_names and len(parsed_path_names) == len(self.pes_data) and "label" not in graph_params:
-            graph_params["label"] = parsed_path_names
-
-        self.config = PlotConfig.from_dict(graph_params)
-
-        # Excitation auto-calculation if x is omitted
-        max_len = max((len(p) for p in self.pes_data), default=1)
-        if getattr(self.config, 'x', None) is None:
-            if 'excitation' in graph_params or 'photo' in graph_params:
-                p_step = 0
-                if 'excitation' in graph_params and graph_params['excitation']:
-                    try:
-                        p_step = int(graph_params['excitation'][0])
-                    except ValueError:
-                        p_step = 0
-                p_step = max(0, min(p_step, max_len - 2)) if max_len > 1 else 0
-                xs = []
-                cur = 0
-                for i in range(max_len):
-                    if i == p_step + 1:
-                        xs.append(xs[-1])
-                    else:
-                        if i > 0 and i != p_step + 1:
-                            cur += 1
-                        xs.append(cur)
-                self.config.x = xs
-                if 'xticks' not in graph_params and 'show_xticks' not in graph_params:
-                    self.config.show_xticks = False
-                    self.config.xticks = False
-
-    def _validate_and_normalize_config(self) -> None:
-        """Validate and normalize configuration parameters."""
-        n_paths = len(self.pes_data)
-
-        list_params = ['colors', 'label', 'zero', 'style', 'linewidth', 'ypad']
-        for param in list_params:
-            current_list = getattr(self.config, param)
-            if not current_list:
-                current_list = [None] * n_paths
-                setattr(self.config, param, current_list)
-            elif len(current_list) != n_paths:
-                if param == 'zero' and len(set(current_list)) > 1:
-                    raise ValueError(f"Parameter 'zero' inconsistent with {n_paths} reactions")
-                setattr(self.config, param, (current_list * n_paths)[:n_paths])
-
-        if self.config.sections:
-            if len(self.config.sections_start) != len(self.config.sections) or len(
-                self.config.sections_end
-            ) != len(self.config.sections):
-                warnings.warn("sections, sections_start, and sections_end must have matching lengths")
-                self.config.sections = []
-
-        # Resolve string names in labelpoint
-        if self.config.labelpoint and self.labels:
-            resolved_lp = []
-            for lp in self.config.labelpoint:
-                if isinstance(lp, int):
-                    resolved_lp.append(lp)
-                elif isinstance(lp, str):
-                    if lp.isdigit():
-                        resolved_lp.append(int(lp))
-                    else:
-                        found = False
-                        for p_lbls in self.labels:
-                            for s_i, s_name in enumerate(p_lbls):
-                                if s_name and (lp == s_name or lp.lower() == str(s_name).lower() or lp in str(s_name)):
-                                    resolved_lp.append(s_i)
-                                    found = True
-                                    break
-                            if found:
-                                break
-            self.config.labelpoint = resolved_lp
-
-        if self.config.relative:
-            self._convert_to_absolute_energies()
-
-        if all(label is None for label in self.config.label):
-            self.config.legend = False
-
-    def _convert_to_absolute_energies(self) -> None:
-        """Convert relative energies to absolute by cumulative sum."""
-        for i in range(len(self.pes_data)):
-            mask = ~np.isnan(self.pes_data[i])
-            if np.any(mask):
-                cumsum = np.cumsum(self.pes_data[i][mask])
-                self.pes_data[i][mask] = cumsum
-
-    def _sync_high_level_data(self) -> None:
-        """Sync TXT parsed data into energy_data, point_labels, annotations, and pathways."""
-        self.energy_data = {}
-        self.point_labels = {}
-        self.pathways = {}
-
-        for idx, data in enumerate(self.pes_data):
-            name = (
-                self.config.label[idx]
-                if (idx < len(self.config.label) and self.config.label[idx] is not None)
-                else f"Pathway {idx + 1}"
-            )
-            energies_list = [None if np.isnan(x) else float(x) for x in data]
-            self.energy_data[name] = energies_list
-
-            lbls = self.labels[idx] if idx < len(self.labels) else []
-            padded_lbls: list[Optional[str]] = [
-                str(l) if l is not None else None for l in lbls
-            ] + [None] * max(0, len(energies_list) - len(lbls))
-            self.point_labels[name] = padded_lbls[:len(energies_list)]
-
-            steps = []
-            for s_idx, e_val in enumerate(energies_list):
-                step_name = padded_lbls[s_idx] or ""
-                steps.append({"name": step_name, "energy": e_val})
-            self.pathways[name] = steps
-
-        self.annotations = {}
-        if self.config.sections:
-            for title, s_start, s_end in zip(
-                self.config.sections, self.config.sections_start, self.config.sections_end
-            ):
-                self.annotations[title] = (float(s_start), float(s_end))
-
-    def _parse_json_dict(self, data: dict[str, Any]) -> None:
-        """Parse structured or plotprofile-style JSON dictionary."""
-        # 1. Title & Units
-        if "title" in data:
-            self.config.title = str(data["title"])
-        if "energy_unit" in data or "units" in data:
-            unit_val = str(data.get("energy_unit") or data.get("units"))
-            self.config.directory = unit_val
-
-        # 2. Extract Pathways / Energy series
-        self.pathways = {}
-        self.energy_data = {}
-        self.point_labels = {}
-        self.annotations = {}
-
-        if "pathways" in data and isinstance(data["pathways"], dict):
-            # Format A: {"pathways": {"Direct": [{"name": "Reactants", "energy": 0.0}, ...]}}
-            for p_name, steps in data["pathways"].items():
-                self.pathways[p_name] = steps
-                e_list: list[Optional[float]] = []
-                l_list: list[Optional[str]] = []
-                for step in steps:
-                    if isinstance(step, dict):
-                        e_list.append(float(step.get("energy", 0.0)) if step.get("energy") is not None else None)
-                        l_list.append(step.get("name"))
-                    elif isinstance(step, (int, float)):
-                        e_list.append(float(step))
-                        l_list.append(None)
-                    elif step is None:
-                        e_list.append(None)
-                        l_list.append(None)
-                self.energy_data[p_name] = e_list
-                self.point_labels[p_name] = l_list
-
-        elif "energies" in data and isinstance(data["energies"], dict):
-            # Format B: {"energies": {"Pathway A": [0.0, 10.2]}}
-            for p_name, values in data["energies"].items():
-                self.energy_data[p_name] = [float(v) if v is not None else None for v in values]
-                self.pathways[p_name] = [{"energy": v} for v in self.energy_data[p_name]]
-        else:
-            # Format C: Direct { "Pathway A": [0.0, 10.2], ... }
-            for key, val in data.items():
-                if isinstance(val, list):
-                    # Check if list of dicts (steps) or list of numbers/None
-                    if val and isinstance(val[0], dict):
-                        self.pathways[key] = val
-                        self.energy_data[key] = [
-                            float(s.get("energy")) if s.get("energy") is not None else None for s in val
-                        ]
-                        self.point_labels[key] = [s.get("name") for s in val]
-                    else:
-                        self.energy_data[key] = [float(v) if v is not None else None for v in val]
-                        self.pathways[key] = [{"energy": v} for v in self.energy_data[key]]
-
-        # 3. Annotations
-        raw_annotations = data.get("annotations")
-        if isinstance(raw_annotations, dict):
-            for a_name, a_span in raw_annotations.items():
-                if isinstance(a_span, (list, tuple)) and len(a_span) == 2:
-                    self.annotations[str(a_name)] = (float(a_span[0]), float(a_span[1]))
-
-        # 4. Point labels override
-        raw_pt_labels = data.get("point_labels")
-        if isinstance(raw_pt_labels, dict):
-            for p_name, p_lbls in raw_pt_labels.items():
-                if isinstance(p_lbls, list):
-                    self.point_labels[p_name] = [str(l) if l is not None else None for l in p_lbls]
-
-        # 5. Populate legacy pes_data & labels
-        self.pes_data = []
-        self.labels = []
-        self.config.label = list(self.energy_data.keys())
-        self.config.legend = len(self.energy_data) > 1
-
-        for name, energies in self.energy_data.items():
-            valid_arr = np.array([e if e is not None else np.nan for e in energies], dtype=float)
-            self.pes_data.append(valid_arr)
-            pt_lbls = self.point_labels.get(name, [])
-            self.labels.append([str(l) if l is not None else "" for l in pt_lbls])
-
-        # Style configs if present
-        cfg_dict = data.get("config", {})
-        if isinstance(cfg_dict, dict):
-            if "colors" in cfg_dict and isinstance(cfg_dict["colors"], list):
-                self.config.colors = cfg_dict["colors"]
-
     # ── Plotting ─────────────────────────────────────────────────────────────
 
     def plot(
@@ -797,7 +340,7 @@ class ReactionProfileAnalyzer:
         else:
             pt_labels = kwargs.pop("point_labels", self.point_labels if any(self.point_labels.values()) else None)
 
-        ann = kwargs.pop("annotations", self.annotations if self.annotations else None)
+        ann = kwargs.pop("annotations", None)
 
         # Merge style kwargs into plotter_kwargs
         from frogchem.reaction_plotter.plotter import _STYLE_KEYS
@@ -951,71 +494,3 @@ class ReactionProfileAnalyzer:
             )
 
         return fig, ax
-
-    def _create_plots(self) -> None:
-        """Create plots using legacy ReactionPlotter interface (for backward compat)."""
-        plotter = ReactionPlotter(
-            figsize=self.config.figsize,
-            desaturate=self.config.desaturate,
-        )
-
-        path_lengths = {len(path) for path in self.pes_data}
-        multi_length = len(path_lengths) > 1
-        max_points = max((len(path) for path in self.pes_data), default=0)
-
-        for idx, (data, labels) in enumerate(zip(self.pes_data, self.labels)):
-            x_positions = self._calculate_x_positions(len(data), max_points)
-            color = self.config.colors[idx] if idx < len(self.config.colors) else None
-            label = self.config.label[idx] if idx < len(self.config.label) else None
-            style = self.config.style[idx] if idx < len(self.config.style) else '-'
-            lwidth = self.config.linewidth[idx] if idx < len(self.config.linewidth) else 1.5
-            zero_val = self.config.zero[idx] if idx < len(self.config.zero) else 0
-            ypad_val = self.config.ypad[idx] if idx < len(self.config.ypad) else 0.0
-
-            plotter.plot_reaction_path(
-                data=data,
-                x_positions=x_positions,
-                color=color,
-                label=label,
-                linestyle=style,
-                linewidth=lwidth,
-                labelpoint=self.config.labelpoint,
-                zero_idx=zero_val,
-                ypad=ypad_val,
-                horizontalalignment=self.config.horizontalalignment,
-                decimals=self.config.decimal_digits,
-                index=idx,
-            )
-
-            if multi_length:
-                plotter.add_custom_tick_labels(
-                    x_positions, labels, color, idx, len(self.pes_data), label
-                )
-
-        if self.config.points:
-            plotter.add_additional_points(
-                self.config.points, self.config.pointscolor, self.config.pointsstyle
-            )
-
-        show_legend = self.config.legend and not multi_length
-        show_standard_ticks = not multi_length
-        show_sections = not multi_length and bool(self.config.sections)
-
-        x_positions = None
-        x_labels = None
-        if show_standard_ticks and self.pes_data:
-            x_positions = self._calculate_x_positions(len(self.pes_data[0]), max_points)
-            x_labels = self.labels[0] if self.labels else []
-
-        plotter.finalize_plot(
-            self.config, show_legend, show_standard_ticks, x_positions, x_labels, show_sections
-        )
-        plotter.save_and_show(self.config, self.file_content)
-
-    @staticmethod
-    def _calculate_x_positions(path_length: int, max_points: int) -> List[float]:
-        """Calculate x-axis positions for a path of given length."""
-        if path_length <= 1:
-            return [0.0]
-        scale = (max_points - 1) / (path_length - 1)
-        return [i * scale for i in range(path_length)]

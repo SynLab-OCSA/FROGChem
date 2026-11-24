@@ -1,90 +1,39 @@
 # Reaction Profiles API Reference: `frogchem.reaction_plotter`
 
-The `frogchem.reaction_plotter` module provides automated parsing and publication-quality graphical rendering of multi-step reaction pathways, competing routes, and catalytic cycles.
+Python side of [`frog-profile`](../cli/frog-profile.md): parse a YAML reaction profile and draw it.
+The input format is described in the [Reaction Profiles user guide](../user-guide/reaction_profiles.md).
 
 ---
 
-## Classes
+## `ReactionProfileAnalyzer(filename=None, content=None)`
 
-### `ReactionProfileAnalyzer`
+Parses a YAML profile, from a file (`filename`) or a string (`content`). Raises `FileNotFoundError`
+for a missing file and `ValueError` when the input is not a YAML mapping.
 
-Parses, validates, and analyzes reaction pathways and intermediate relative free energies.
-
-#### Methods
-
-##### `from_json(filepath)`
-Class method to construct an analyzer instance from a JSON file.
-
-**Parameters:**
-* `filepath` (`str | Path`): Path to JSON profile definition.
-
-**Returns:**
-* `ReactionProfileAnalyzer`: Initialized analyzer.
-
-**Esempio:**
+* `energy_data` (`dict[str, list[float | None]]`): energies of each pathway on the common state grid
+  (`None` where a branch has no point).
+* `point_labels` (`dict[str, list[str | None]]`): state names of each pathway.
+* `config` (`PlotConfig`): title, colours, styles, `label_points`, sections and the other plot options.
+* `plot(filename=None, file_format="png", dpi=600, style="default", **kwargs)`: draws the profile and
+  returns `(fig, ax)`; with `filename` it also saves `<filename>.<file_format>`. `style` is
+  `default`, `presentation` or `straight`; `kwargs` override style options (e.g. `point_type`,
+  `curviness`, `legend_barriers`, `annotations`, `point_labels`, `x`).
 
 ```python
 from frogchem.reaction_plotter import ReactionProfileAnalyzer
 
-analyzer = ReactionProfileAnalyzer.from_json("reaction.json")
-print("Pathways:", list(analyzer.pathways.keys()))
+analyzer = ReactionProfileAnalyzer("pes.yaml")
+fig, ax = analyzer.plot(style="presentation")
+fig.savefig("pes_profile.png", dpi=300)
 ```
 
-**Output atteso:**
-```text
-Pathways: ['Direct Mechanism', 'Alternative Pathway']
-```
+## `ReactionProfilePlotter(style="default", **style_options)`
 
-##### `get_pathway(name)`
-Retrieves a specific reaction pathway list.
-
-##### `re_reference(zero_state_name)`
-Re-references all pathway energies so that the specified state has energy $0.0$.
-
----
-
-### `ReactionPlotter`
-
-Renders publication-ready matplotlib figures of reaction profiles.
-
-#### Constructor
+The drawing engine used by `plot()`. `plot(energy_data, ...)` takes `{name: [energies]}` (or a list
+of lists) directly, without an input file, and returns `(fig, ax)`.
 
 ```python
-ReactionPlotter(analyzer, style="default")
-```
+from frogchem.reaction_plotter import ReactionProfilePlotter
 
-#### Methods
-
-##### `plot(show_labels=True, show_energies=True, energy_unit="kcal/mol", line_style="dashed", color_palette=None, figsize=(10, 6))`
-
-Generates the matplotlib figure.
-
-**Parameters:**
-
-* `show_labels` (`bool`, optional): Whether to annotate intermediate/TS state names. Default: `True`.
-* `show_energies` (`bool`, optional): Whether to display relative energy values above energy levels. Default: `True`.
-* `energy_unit` (`str`, optional): Energy unit for display (`"kcal/mol"`, `"kJ/mol"`, or `"Hartree"`). Default: `"kcal/mol"`.
-* `line_style` (`str`, optional): Matplotlib line style connecting states. Default: `"dashed"`.
-* `color_palette` (`list[str] | None`, optional): List of hex colors for pathways.
-* `figsize` (`tuple[float, float]`, optional): Figure size in inches. Default: `(10, 6)`.
-
-**Returns:**
-
-* `tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]`: The Matplotlib Figure and Axes objects.
-
-**Esempio:**
-
-```python
-from frogchem.reaction_plotter import ReactionPlotter, ReactionProfileAnalyzer
-
-analyzer = ReactionProfileAnalyzer.from_json("reaction.json")
-plotter = ReactionPlotter(analyzer)
-fig, ax = plotter.plot(show_labels=True, show_energies=True)
-fig.savefig("profile.png")
-print("Plot successfully rendered.")
-```
-
-**Output atteso:**
-```text
-Plot successfully rendered.
+fig, ax = ReactionProfilePlotter(point_type="bar").plot({"Path A": [0.0, 18.4, -3.2, 12.1, -10.5]})
 ```

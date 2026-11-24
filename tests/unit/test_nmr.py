@@ -75,18 +75,6 @@ def test_nmr_parsing():
     assert (2, 1) in nmr.j_couplings
     assert nmr.j_couplings[(1, 2)] == -12.500
 
-    # 3. Tables and filters
-    shifts_table = nmr.get_shifts_table(atoms=[1, 2])
-    assert 'H2' in shifts_table
-    assert 'H3' in shifts_table
-    assert '31.250' in shifts_table
-
-    j_matrix = nmr.get_j_matrix(atoms=[1, 2])
-    assert '-12.500' in j_matrix
-
-    dist_matrix = nmr.get_distances(atoms=[1, 2])
-    assert 'H2' in dist_matrix
-    assert 'H3' in dist_matrix
 
 
 def test_ensemble_extraction():

@@ -8,20 +8,12 @@ Performs voxel-by-voxel arithmetic on volumetric data in Gaussian cube format
 import os
 from pathlib import Path
 
-from frogchem.cli.base import CLICommand, Guide, Output
+from frogchem.cli.base import CLICommand, Guide, Output, split_name
 from frogchem.exceptions import InputError
 from frogchem.grid import add_grids, multiply_grid, subtract_grids
 from frogchem.io import parse_gaussian_cube, write_gaussian_cube
 from frogchem.printer import print_info
 
-
-def _cube_stem(path) -> str:
-    """File name without .gz and .cube / .cub: 'x.cube.gz' -> 'x'."""
-    name = Path(path).name
-    for ext in ('.gz', '.cube', '.cub'):
-        if name.lower().endswith(ext):
-            name = name[:-len(ext)]
-    return name
 
 
 class CubeManipulation(CLICommand, name='frog-cube'):
@@ -112,8 +104,8 @@ class CubeManipulation(CLICommand, name='frog-cube'):
         g1 = parse_gaussian_cube(f1)
         g2 = parse_gaussian_cube(f2)
         if op == 'add':
-            return add_grids(g1, g2), Path(f'{_cube_stem(f2)}_plus_{_cube_stem(f1)}.cube')
-        return subtract_grids(g1, g2), Path(f'{_cube_stem(f2)}_minus_{_cube_stem(f1)}.cube')
+            return add_grids(g1, g2), Path(f'{split_name(f2)[0]}_plus_{split_name(f1)[0]}.cube')
+        return subtract_grids(g1, g2), Path(f'{split_name(f2)[0]}_minus_{split_name(f1)[0]}.cube')
 
     def _scale(self, f1, const_str):
         try:
@@ -172,9 +164,6 @@ class CubeManipulation(CLICommand, name='frog-cube'):
             self.args.output = inquirer.text(message="Output cube file:", default=str(default)).execute()
         return inputs, result, default
 
-
-def parse_args():
-    return CubeManipulation().build_parser().parse_args()
 
 
 def main():

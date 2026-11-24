@@ -119,9 +119,6 @@ class SortDiastero(CLICommand, name='frog-sort'):
                     self.saved(out, f"{code} ensemble ({len(ids)} structure{'s' * (len(ids) != 1)})")
 
 
-def parse_args():
-    return SortDiastero().build_parser().parse_args()
-
 
 def main():
     SortDiastero().main()

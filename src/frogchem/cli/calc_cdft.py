@@ -7,7 +7,7 @@ from frogchem.exceptions import ParseError
 from frogchem.filetypes import load_calculation
 from frogchem.printer import print_info, print_warning
 
-HARTREE_TO_EV = 27.211386245988
+from frogchem.chemistry import HARTREE_TO_EV
 
 
 def _get_homo_lumo_energies(calc) -> tuple[float | None, float | None]:
@@ -182,9 +182,6 @@ class CalcCDFT(CLICommand, name='frog-cdft'):
         if n_ok == 0:
             raise ParseError("No HOMO/LUMO energies found in any input file")
 
-
-def parse_args():
-    return CalcCDFT().build_parser().parse_args()
 
 
 def main():

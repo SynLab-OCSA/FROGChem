@@ -5,7 +5,7 @@ Three commands draw reaction energy diagrams:
 | Command | Input | Use it for |
 |---|---|---|
 | `frog-autoprofile` | QM outputs of the stationary points | a quick profile straight from the calculations |
-| `frog-profile` | a small YAML/TXT/JSON file with relative energies | publication figures, several pathways, branches |
+| `frog-profile` | a small YAML file with relative energies | publication figures, several pathways, branches |
 | `frog-plot-neb` | ORCA `.interp` file of an NEB run | checking a reaction-path search |
 
 All energies must come from structures with the **same atoms** (same total composition and
@@ -29,12 +29,11 @@ table and to the labels.
 
 ## 2. From an energy table: `frog-profile`
 
-Write the relative energies (usually ΔG in kcal/mol) in a small input file. The three formats
-below describe the same figure: a main path R → TS1 → INT → TS2 → P and a second path that
-branches from INT. These inputs were run with `frog-profile`; each produces
-`<stem>_profile.png` next to the input.
+Write the relative energies (usually ΔG in kcal/mol) in a small YAML file. The input below
+describes a main path R → TS1 → INT → TS2 → P and a second path that branches from INT;
+`frog-profile` writes `<stem>_profile.png` next to the input.
 
-**YAML** (`pes.yaml`, recommended):
+`pes.yaml`:
 
 ```yaml
 title: "Model reaction"
@@ -50,28 +49,6 @@ pathways:
     energies: [-3.2, 15.8, -12.0]
 ```
 
-**TXT** (`pes.txt`): `;`-separated energies, one line per pathway; `@INT:` starts a branch at
-the state named `INT` in the labels.
-
-```text
---# PES
-Path A: 0.0; 18.4; -3.2; 12.1; -10.5
-Path B: @INT: -3.2; 15.8; -12.0
-
---# LABELS
-R; TS1; INT; TS2; P
-
---# GRAPHS
-title : Model reaction
-labelpoint : TS1; TS2
-```
-
-**JSON** (`pes.json`, simplest form, one pathway, no labels):
-
-```json
-{"Path A": [0.0, 18.4, -3.2, 12.1, -10.5]}
-```
-
 Run:
 
 ```bash
@@ -82,10 +59,10 @@ frog-profile pes.yaml --out-dir figs --point-type bar --legend-barriers
 
 `--style presentation` uses larger fonts and thicker lines, `--style straight` straight segments;
 `--curviness 0` and `--point-type {hollow,bar,dot}` change the curve and the markers.
-`frog-profile --interactive` builds the input file step by step in the terminal; `--gui` opens a
-browser interface (needs the optional `streamlit` package).
+`frog-profile --gui` opens a browser editor that writes the YAML file (needs the optional
+`streamlit` package).
 
-Note: several inputs with the same stem (`pes.yaml`, `pes.txt`, `pes.json`) all write
+Note: several inputs with the same stem (`pes.yaml`, `pes.yml`) all write
 `pes_profile.png`; the last one wins. Use different file names or `-o PREFIX`.
 
 ### From Python
@@ -93,7 +70,7 @@ Note: several inputs with the same stem (`pes.yaml`, `pes.txt`, `pes.json`) all 
 ```python
 from frogchem.reaction_plotter import ReactionProfileAnalyzer
 
-analyzer = ReactionProfileAnalyzer("pes.yaml", auto_plot=False)
+analyzer = ReactionProfileAnalyzer("pes.yaml")
 print(list(analyzer.energy_data))
 print(analyzer.energy_data["Path B"])
 

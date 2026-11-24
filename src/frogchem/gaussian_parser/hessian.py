@@ -1,12 +1,13 @@
 """Gaussian frequency section: frequencies, IR intensities and normal-mode displacement vectors.
 
-NOTE: get_freq, get_ir_intensities, get_normal_modes, align_normal_modes, to_displacements and the
-private helpers are copied verbatim in ensemble_analyzer/parsers/vibrations.py (with a
+NOTE: get_freq, get_ir_intensities, get_normal_modes, align_normal_modes and the private helpers are copied verbatim in ensemble_analyzer/parsers/vibrations.py (with a
 ``gaussian_`` prefix). Keep the two copies in sync.
 """
 import re
 import logging
 import numpy as np
+
+from frogchem.orca_parser.hessian import to_displacements  # noqa: F401  (shared with ORCA)
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +140,3 @@ def align_normal_modes(fl, normal_modes, target='Input orientation:', source='St
     return np.ascontiguousarray(disp.reshape(-1, 3 * n_atoms).T)
 
 
-def to_displacements(normal_modes, n_atoms):
-    """(3N, n_modes) normal-mode matrix -> (n_modes, n_atoms, 3) displacement vectors."""
-    normal_modes = np.asarray(normal_modes, dtype=np.float64)
-    return np.ascontiguousarray(normal_modes[:3 * n_atoms].T).reshape(-1, n_atoms, 3)

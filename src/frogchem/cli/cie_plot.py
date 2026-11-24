@@ -138,12 +138,8 @@ class CiePlot(CLICommand, name='frog-cie'):
         elif not files:
             raise InputError("Give at least one spectrum file or --external-coordinates")
 
-        try:
-            import colour
-            import colour.plotting as cl_plot
-        except ImportError:
-            raise InputError("The library 'colour-science' is not installed. "
-                             "Install it with: pip install colour-science")
+        import colour
+        import colour.plotting as cl_plot
         from dataclasses import replace
         from itertools import cycle
 
@@ -246,7 +242,7 @@ class CiePlot(CLICommand, name='frog-cie'):
         self.output(rows, ['Name', 'Source', 'CIE x', 'CIE y'], title='CIE coordinates', floatfmt='.4f')
 
         n_entries = len(ax.get_legend_handles_labels()[0])
-        plotter.finish(ax, opts, loc=opts.legend_loc or 'upper left', bbox_to_anchor=(1.02, 1),
+        plotter.finish(ax, opts, loc='upper left', bbox_to_anchor=(1.02, 1),
                        borderaxespad=0, ncol=2 if n_entries > 20 else 1, title="Legend",
                        frameon=True, framealpha=1.0, fontsize='small')
         # after finish(): placement depends on the final axis limits; points with a custom style
@@ -256,9 +252,6 @@ class CiePlot(CLICommand, name='frog-cie'):
         plotter.label_points(ax, mx, my, mlabels, marker_size=mhalf)
         self.save_figure(fig, self.plot_path('cie_diagram'))
 
-
-def parse_args():
-    return CiePlot().build_parser().parse_args()
 
 
 def main():

@@ -323,9 +323,7 @@ class TestOrcaHessian:
     def test_mode_localization_and_ipr(self):
         from frogchem.orca_parser.hessian import (
             localize_mode,
-            localize_mode_fragment,
             inverse_participation_ratio,
-            localize_all_modes,
         )
         from types import SimpleNamespace
         # Mock calculation with 2 atoms and 6 normal modes
@@ -345,14 +343,6 @@ class TestOrcaHessian:
         ipr = inverse_participation_ratio(mock_calc, 0)
         assert np.isclose(ipr, 1.0)
 
-        frag = localize_mode_fragment(mock_calc, 0, {'frag_O': [0], 'frag_H': [1]})
-        assert np.isclose(frag['frag_O'], 100.0)
-        assert np.isclose(frag['frag_H'], 0.0)
-
-        all_res = localize_all_modes(mock_calc, {'frag_O': [0]})
-        assert len(all_res['ipr']) == 2
-        assert all_res['atomic'].shape == (2, 2)
-        assert 'fragments' in all_res
 
     def test_displace_geometry(self, tmp_path, monkeypatch):
         from frogchem.orca_parser.hessian import displace_geometry

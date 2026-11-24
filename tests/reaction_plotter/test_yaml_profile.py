@@ -1,4 +1,4 @@
-"""Tests for YAML input format and relaxed TXT parsing in reaction_plotter."""
+"""Tests for the YAML input format of reaction_plotter."""
 
 from pathlib import Path
 import pytest
@@ -54,31 +54,12 @@ pathways:
     energies: [42.0, 46.9, 39.2, 16.6]
 """
 
-RELAXED_TXT = """
---# PES
-Trunk: 0.0; 71.7; 69.4; 70.5; 74.5; 42.0; None; None; None; None
-SET: @II: 42.0; 47.1; 13.9; 16.6; -24.1
-HAT: @5: 42.0; 46.9; 39.2; 16.6; None
-
---# LABELS
-1a-Br S0; 1a-Br S1; I; I'; TS-I; II; MECP-SET; IV; TS-IV; 2a-HBr
-
---# GRAPHS
-title : Photochemical Test
-excitation : 0
-point_type : hollow
-labelpoint : TS-I; MECP-SET
-figsize : 12; 7
-save : false
-"""
-
-
 class TestYamlReactionProfile:
     def test_yaml_parsing_and_branching(self, tmp_path):
         yaml_file = tmp_path / "mechanism.yaml"
         yaml_file.write_text(SAMPLE_YAML, encoding="utf-8")
 
-        analyzer = ReactionProfileAnalyzer(str(yaml_file), auto_plot=False)
+        analyzer = ReactionProfileAnalyzer(str(yaml_file))
 
         # Check energy data
         assert "Trunk" in analyzer.energy_data
@@ -119,39 +100,13 @@ class TestYamlReactionProfile:
         yaml_file.write_text(SAMPLE_YAML, encoding="utf-8")
         out_png = tmp_path / "output_plot"
 
-        analyzer = ReactionProfileAnalyzer(str(yaml_file), auto_plot=False)
+        analyzer = ReactionProfileAnalyzer(str(yaml_file))
         fig, ax = analyzer.plot(filename=str(out_png), file_format="png")
 
         assert fig is not None
         assert ax is not None
         assert (tmp_path / "output_plot.png").exists()
         assert (tmp_path / "output_plot.png").stat().st_size > 0
-
-    def test_relaxed_txt_parsing(self, tmp_path):
-        txt_file = tmp_path / "relaxed.txt"
-        txt_file.write_text(RELAXED_TXT, encoding="utf-8")
-
-        analyzer = ReactionProfileAnalyzer(str(txt_file), auto_plot=False)
-
-        assert "Trunk" in analyzer.energy_data
-        assert "SET" in analyzer.energy_data
-        assert "HAT" in analyzer.energy_data
-
-        # Check that @II was branched at index 5
-        assert analyzer.energy_data["SET"][:5] == [None, None, None, None, None]
-        assert analyzer.energy_data["SET"][5] == 42.0
-
-        # Check that single LABELS line was applied to all pathways
-        assert len(analyzer.point_labels["Trunk"]) == 10
-        assert analyzer.point_labels["Trunk"][4] == "TS-I"
-        assert analyzer.point_labels["SET"][4] == "TS-I"
-
-        # Check excitation
-        assert analyzer.config.x[0] == analyzer.config.x[1]
-
-        # Check labelpoint by name
-        assert 4 in analyzer.config.labelpoint
-        assert 6 in analyzer.config.labelpoint
 
     def test_cli_with_yaml_file(self, tmp_path):
         yaml_file = tmp_path / "cli_mech.yaml"
@@ -182,7 +137,7 @@ pathways:
         yaml_file = tmp_path / "distinct.yaml"
         yaml_file.write_text(yaml_content, encoding="utf-8")
 
-        analyzer = ReactionProfileAnalyzer(str(yaml_file), auto_plot=False)
+        analyzer = ReactionProfileAnalyzer(str(yaml_file))
 
         # Check that Path1 has original step names
         assert analyzer.point_labels["Path1"][2] == "C"

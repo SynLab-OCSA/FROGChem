@@ -145,10 +145,6 @@ class SplitXyz(CLICommand, name='frog-split'):
 
 
 # backward compat
-def parse_args():
-    return SplitXyz().build_parser().parse_args()
-
-
 def main():
     SplitXyz().main()
 

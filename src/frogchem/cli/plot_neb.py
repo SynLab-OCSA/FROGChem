@@ -111,9 +111,6 @@ def _iteration_kind(idx: int, n: int) -> int:
     return 0 if idx == 0 else 2 if idx == n - 1 else 1
 
 
-def parse_args():
-    return PlotNeb().build_parser().parse_args()
-
 
 def main():
     PlotNeb().main()

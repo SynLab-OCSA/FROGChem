@@ -117,9 +117,6 @@ class SolventSurface(CLICommand, name='frog-solvent'):
         self.output(summary_data, ['Input File', 'SAS Cube', 'SES Cube'], title='Solvent Surface Summary')
 
 
-def parse_args():
-    return SolventSurface().build_parser().parse_args()
-
 
 def main():
     SolventSurface().main()

@@ -11,7 +11,6 @@ from frogchem.cli.base import CLICommand, Guide, Output
 from frogchem.exceptions import InputError, ParseError
 from frogchem.filetypes import load_calculation
 from frogchem.printer import print_info, print_warning
-from frogchem.reaction_plotter.plotter import ReactionPlotter
 from frogchem.steric_maps import compute_buried_volume, get_sambvca_radii, orient_positions
 from frogchem.thermo import free_gibbs_energy
 
@@ -168,29 +167,10 @@ class AutoProfile(CLICommand, name='frog-autoprofile'):
 
         opts = self.plot_options(title="Reaction Profile", ylabel=plotter.energy_label(args.energy, delta=True),
                                  colors=('teal',), figsize=(8, 5), legend=False)
-        line_kw = {}
-        if opts.linewidth is not None:
-            line_kw['linewidth'] = opts.linewidth
-        if opts.linestyle:
-            line_kw['linestyle'] = plotter.LINESTYLES.get(opts.linestyle, opts.linestyle)
-        profile = ReactionPlotter(figsize=opts.figsize)
-        profile.plot_reaction_path(
-            data=np.array(rel_energies), x_positions=x_positions, color=plotter.series_colors(opts, 1)[0],
-            label="Reaction Path", path_index=0, total_paths=1, path_label="Reaction Path", **line_kw,
-        )
-        profile.add_custom_tick_labels(
-            x_positions=x_positions, labels=final_labels, color='black',
-            path_index=0, total_paths=1, path_label=None,
-        )
-        ax = profile.ax
-        ax.set_xticks([])
+        fig, ax = plotter.line(x_positions, {"Reaction Path": rel_energies}, opts=opts, marker='o')
+        ax.set_xticks(x_positions, final_labels)
         ax.axhline(0, color='gray', linestyle='--', linewidth=0.8)
-        plotter.finish(ax, opts)
-        self.save_figure(profile.fig, self.plot_path('reaction_profile'))
-
-
-def parse_args():
-    return AutoProfile().build_parser().parse_args()
+        self.save_figure(fig, self.plot_path('reaction_profile'))
 
 
 def main():

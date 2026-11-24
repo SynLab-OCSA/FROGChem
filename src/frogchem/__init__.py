@@ -27,7 +27,6 @@ _TOP_LEVEL_MAP = {
     'Calculation': ('frogchem.orca_parser.calculation', 'Calculation'),
     'OrcaCalculation': ('frogchem.orca_parser.calculation', 'Calculation'),
     'GaussianCalculation': ('frogchem.gaussian_parser.calculation', 'GaussianCalculation'),
-    'ReactionPlotter': ('frogchem.reaction_plotter.plotter', 'ReactionPlotter'),
     'ReactionProfileAnalyzer': ('frogchem.reaction_plotter.profile', 'ReactionProfileAnalyzer'),
     'NMRAnalysis': ('frogchem.orca_parser.nmr', 'NMRAnalysis'),
     'get_nmr_equivalencies': ('frogchem.nmr', 'get_nmr_equivalencies'),
@@ -72,13 +71,9 @@ def read(filename):
 
     header = ""
     try:
-        if path_str.endswith(".gz"):
-            import gzip
-            with gzip.open(p, "rt", encoding="utf-8", errors="replace") as f:
-                header = "".join(f.readline() for _ in range(100))
-        else:
-            with open(p, "r", encoding="utf-8", errors="replace") as f:
-                header = "".join(f.readline() for _ in range(100))
+        from frogchem.io import open_text
+        with open_text(p) as f:
+            header = "".join(f.readline() for _ in range(100))
     except Exception:
         pass
 
@@ -95,9 +90,9 @@ def read(filename):
 # Lazy submodule access via __getattr__ avoids cold-start penalty
 # while enabling `from frogchem import thermo` etc.
 _SUBMODULES = [
-    'chemistry', 'chimera_commands', 'density_builder', 'exceptions',
-    'graph_theory', 'grid', 'gui_utils', 'io', 'math_geometry',
-    'parser_base', 'printer', 'solvent_surface', 'substituter',
+    'chemistry', 'density_builder', 'exceptions',
+    'graph_theory', 'grid', 'io', 'math_geometry',
+    'parser_base', 'printer', 'solvent_surface',
     'symmetry', 'thermo', 'ensemble', 'nmr', 'nmr_sim',
 ]
 
@@ -106,7 +101,6 @@ __all__ = _SUBMODULES + [
     'Calculation',
     'OrcaCalculation',
     'GaussianCalculation',
-    'ReactionPlotter',
     'ReactionProfileAnalyzer',
     'read',
     'read_orca',

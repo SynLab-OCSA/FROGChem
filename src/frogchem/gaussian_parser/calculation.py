@@ -69,12 +69,11 @@ class GaussianCalculation(BaseParser):
         orbital_coefficients is n_bf x n_MO (alpha then beta columns for open shell), with
         occupation / orbital_energies (Eh) in the same order and alpha_/beta_coeff, alpha_/beta_occ
         for open-shell runs, as in orca_parser.Calculation. A block FROG cannot use (e.g. g
-        functions) is reported in self.errors and leaves the attributes unset.
+        functions) is logged as a warning and leaves the attributes unset.
         """
         try:
             mos = get_MOs(self.fl)
         except ParseError as e:
-            self.errors.add(str(self.fname), 'orbitals', f'MO coefficients not usable: {e}', section='orbitals')
             logger.warning(f'{self.fname}: MO coefficients not usable: {e}')
             return
         if mos is None:
@@ -104,7 +103,6 @@ class GaussianCalculation(BaseParser):
         try:
             self.basis_coeff = get_basis_coefficients(self.fl, self.atoms)
         except ParseError as e:
-            self.errors.add(str(self.fname), 'basis', str(e), section='orbitals')
             logger.warning(f'{self.fname}: {e}')
             return
         # No gfinput: rebuild the standard basis ('Standard basis: def2SVP (5D, 7F)') from the Basis Set Exchange
@@ -180,11 +178,6 @@ class GaussianCalculation(BaseParser):
     def has_tddft(self):
         return self.reg['tddft_start'] in self.fl
 
-    def opt_done(self):
-        return len(re.findall(self.reg['opt_done'], self.fl)) >= 1
-
-    def normal_termination(self):
-        return len(re.findall(self.reg['finish'], self.fl)) >= 1
 
     def to_ase(self):
         """Convert calculation geometry to an ASE Atoms object."""
@@ -193,22 +186,8 @@ class GaussianCalculation(BaseParser):
 
     def to_rdkit(self, charge: int = 0):
         """Convert calculation geometry to an RDKit Mol object."""
-        from rdkit import Chem
-        from rdkit.Chem import rdDetermineBonds
-
-        mol = Chem.RWMol()
-        conf = Chem.Conformer()
-        for i, (sym, pos) in enumerate(zip(self.atoms, self.geom)):
-            mol.AddAtom(Chem.Atom(str(sym)))
-            conf.SetAtomPosition(i, (float(pos[0]), float(pos[1]), float(pos[2])))
-        mol = mol.GetMol()
-        mol.AddConformer(conf)
-
-        try:
-            rdDetermineBonds.DetermineBonds(mol, charge=charge)
-        except Exception:
-            pass
-        return mol
+        from frogchem.io import rdkit_mol
+        return rdkit_mol(self.atoms, self.geom, charge, strict=False)
 
     def has_nbo(self) -> bool:
         """Check if output file contains NBO analysis."""

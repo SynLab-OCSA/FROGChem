@@ -33,6 +33,4 @@ REGEXS = {
     'mulliken_end': 'Sum of Mulliken',
     'loewdin_start': r'Lowdin Atomic Charges:[ \t]*\n',
     'loewdin_end': 'Sum of Lowdin',
-    'opt_done': 'Optimization completed',
-    'finish': 'Normal termination',
 }

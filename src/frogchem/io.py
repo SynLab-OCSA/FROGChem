@@ -1,13 +1,20 @@
 import numpy as np
 from pathlib import Path
-from typing import List, Tuple, Optional, Dict, Any, Union
+from typing import List, Tuple, Optional, Union
 from itertools import groupby
 
 __all__ = [
     "read_xyz", "write_xyz", "write_crest_constraints",
     "compact_list_fragments", "parse_gaussian_cube", "write_gaussian_cube",
-    "xyz_to_rdkit_mol", "read_nbo_plot_37",
+    "read_nbo_plot_37", "rdkit_mol", "open_text",
 ]
+
+
+def open_text(path):
+    """Text handle on a plain or .gz file (UTF-8, undecodable bytes replaced)."""
+    import gzip
+    opener = gzip.open if str(path).lower().endswith('.gz') else open
+    return opener(path, 'rt', encoding='utf-8', errors='replace')
 
 
 def _parse_xyz_block(block: List[str]) -> Tuple[List[str], np.ndarray, str]:
@@ -45,16 +52,9 @@ def read_xyz(fname: str) -> Tuple[List[List[str]], List[np.ndarray], List[str]]:
     Returns:
         Tuple of (atoms_list, positions_list, comments_list) for each geometry
     """
-    # ponytail: transparent .gz decompression support
-    fname_str = str(fname)
     try:
-        if fname_str.endswith('.gz'):
-            import gzip
-            with gzip.open(fname, 'rt', encoding='utf-8', errors='replace') as f:
-                lines = [line.rstrip() for line in f]
-        else:
-            with open(fname, 'r', encoding='utf-8', errors='replace') as f:
-                lines = [line.rstrip() for line in f]
+        with open_text(fname) as f:
+            lines = [line.rstrip() for line in f]
     except FileNotFoundError:
         raise FileNotFoundError(f"File {fname} not found")
     
@@ -203,15 +203,8 @@ def parse_gaussian_cube(filename):
     Returns:
         dict: Dictionary with all cube file information
     """
-    # ponytail: transparent .gz decompression support
-    fname_str = str(filename)
-    if fname_str.endswith('.gz'):
-        import gzip
-        with gzip.open(filename, 'rt', encoding='utf-8', errors='replace') as f:
-            lines = f.readlines()
-    else:
-        with open(filename, 'r', encoding='utf-8', errors='replace') as f:
-            lines = f.readlines()
+    with open_text(filename) as f:
+        lines = f.readlines()
     
     # Metadata
     title = lines[0].strip()
@@ -352,42 +345,6 @@ def _write_cube_values(f, flat, per_line=6):
         f.write("".join(f"{v:13.5E}" for v in rest) + "\n")
 
 
-def cube_component(cube_data, k):
-    """One orbital of a multicube (or the cube itself) as an ordinary single-volume cube dict."""
-    out = dict(cube_data)
-    data = np.asarray(cube_data['data'])
-    comp = data[..., k] if cube_data.get('orbital_ids') is not None else data
-    out['data'] = np.ascontiguousarray(comp)
-    out['data_range'] = (out['data'].min(), out['data'].max())
-    out['orbital_ids'] = None
-    out['natoms'] = abs(cube_data['natoms'])
-    return out
-
-
-
-def xyz_to_rdkit_mol(xyz_file: str, frame: int = 0, charge: int = 0):
-    """Build an RDKit molecule (with bonds perceived from geometry) from one frame of an XYZ file."""
-    from rdkit import Chem
-    from rdkit.Chem import rdDetermineBonds
-
-    atoms_list, positions_list, _ = read_xyz(xyz_file)
-    if not atoms_list:
-        raise ValueError(f"No structures found in {xyz_file}")
-    atoms, positions = atoms_list[frame], positions_list[frame]
-
-    mol = Chem.RWMol()
-    conf = Chem.Conformer(len(atoms))
-    for i, (symbol, (x, y, z)) in enumerate(zip(atoms, positions)):
-        mol.AddAtom(Chem.Atom(symbol))
-        conf.SetAtomPosition(i, (float(x), float(y), float(z)))
-
-    mol = mol.GetMol()
-    mol.AddConformer(conf)
-    rdDetermineBonds.DetermineBonds(mol, charge=charge)
-
-    return mol
-
-
 def read_nbo_plot_37(
     filepath: Union[str, Path],
     n_ao: Optional[int] = None,
@@ -429,3 +386,26 @@ def read_nbo_plot_37(
         return vals.reshape((dim, dim), order='F')
 
     return vals
+
+
+def rdkit_mol(atoms, geom, charge: int = 0, strict: bool = True):
+    """RDKit molecule with bonds perceived from the 3D coordinates.
+
+    strict=False keeps the molecule without bonds when the perception fails.
+    """
+    from rdkit import Chem
+    from rdkit.Chem import rdDetermineBonds
+
+    mol = Chem.RWMol()
+    conf = Chem.Conformer(len(atoms))
+    for i, (symbol, xyz) in enumerate(zip(atoms, geom)):
+        mol.AddAtom(Chem.Atom(str(symbol)))
+        conf.SetAtomPosition(i, tuple(float(c) for c in xyz))
+    mol = mol.GetMol()
+    mol.AddConformer(conf, assignId=True)
+    try:
+        rdDetermineBonds.DetermineBonds(mol, charge=charge)
+    except Exception:
+        if strict:
+            raise
+    return mol

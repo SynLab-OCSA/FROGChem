@@ -101,10 +101,10 @@ def test_wiberg_parsing_and_queries():
 
     assert nbo.wiberg_matrix is not None
     assert nbo.wiberg_matrix.shape == (4, 4)
-    assert np.isclose(nbo.get_wiberg_bond_order(0, 1), 0.9850)
-    assert np.isclose(nbo.get_wiberg_bond_order(1, 0), 0.9850)
-    assert np.isclose(nbo.get_wiberg_bond_order(1, 2), 0.0010)
-    assert np.isclose(nbo.get_wiberg_total(0), 2.9550)
+    assert np.isclose(nbo.wiberg_matrix[0, 1], 0.9850)
+    assert np.isclose(nbo.wiberg_matrix[1, 0], 0.9850)
+    assert np.isclose(nbo.wiberg_matrix[1, 2], 0.0010)
+    assert np.isclose(nbo.wiberg_totals[0], 2.9550)
 
 
 def test_wiberg_chunked_matrix():
@@ -112,14 +112,14 @@ def test_wiberg_chunked_matrix():
     assert nbo.wiberg_matrix is not None
     assert nbo.wiberg_matrix.shape == (11, 11)
     # Check bond between 1 and 2 (0 and 1 in 0-based)
-    assert np.isclose(nbo.get_wiberg_bond_order(0, 1), 1.0200)
+    assert np.isclose(nbo.wiberg_matrix[0, 1], 1.0200)
     # Check bond in second chunk between 10 and 11 (9 and 10 in 0-based)
-    assert np.isclose(nbo.get_wiberg_bond_order(9, 10), 1.0150)
-    assert np.isclose(nbo.get_wiberg_bond_order(10, 9), 1.0150)
-    assert np.isclose(nbo.get_wiberg_total(9), 1.0150)
+    assert np.isclose(nbo.wiberg_matrix[9, 10], 1.0150)
+    assert np.isclose(nbo.wiberg_matrix[10, 9], 1.0150)
+    assert np.isclose(nbo.wiberg_totals[9], 1.0150)
 
 
-def test_wiberg_errors():
+def test_wiberg_missing():
     output_no_wiberg = """
  Summary of Natural Population Analysis:
    Atom  No    Charge        Core      Valence    Rydberg      Total
@@ -130,17 +130,6 @@ def test_wiberg_errors():
     """
     nbo = NBOAnalysis(output_no_wiberg)
     assert nbo.wiberg_matrix is None
-
-    with pytest.raises(ValueError, match="Wiberg bond index matrix not found"):
-        nbo.get_wiberg_bond_order(0, 1)
-
-    with pytest.raises(ValueError, match="Wiberg bond index data not found"):
-        nbo.get_wiberg_total(0)
-
-    # Test out of bounds on valid matrix
-    nbo_valid = NBOAnalysis(SAMPLE_WIBERG_OUTPUT)
-    with pytest.raises(IndexError):
-        nbo_valid.get_wiberg_bond_order(0, 99)
 
 
 def test_nbo_query_api():
@@ -174,29 +163,10 @@ def test_nbo_query_api():
     lp_h1 = nbo.get_lone_pairs(atom=1)
     assert lp_h1.empty
 
-    # E2 Interactions
-    interactions = nbo.get_interactions(min_e2=2.0)
-    assert len(interactions) == 2
-    assert np.isclose(interactions.iloc[0]['E(2)'], 4.50)
-
-    interactions_high = nbo.get_interactions(min_e2=10.0)
-    assert interactions_high.empty
-
-    interactions_lp = nbo.get_interactions(donor_type="LP")
-    assert len(interactions_lp) == 2
-
-    # NPA charge
-    assert np.isclose(nbo.get_npa_charge(0), -0.45)
-    assert np.isclose(nbo.get_npa_charge(1), 0.15)
-
-    with pytest.raises(IndexError):
-        nbo.get_npa_charge(99)
-
-    # Summary
-    summary = nbo.summary()
-    assert summary["n_atoms"] == 4
-    assert summary["has_wiberg"] is True
-    assert summary["strongest_interaction"]["e2"] == 4.50
+    # E2 and NPA tables
+    assert np.isclose(nbo.perturbation_theory['E(2)'].max(), 4.50)
+    charges = nbo.npa_charges.set_index('Index')['Charge']
+    assert np.isclose(charges[0], -0.45) and np.isclose(charges[1], 0.15)
 
 
 def test_real_nbo_file_and_cycle_selection():
@@ -218,8 +188,8 @@ def test_real_nbo_file_and_cycle_selection():
     assert nbo_last.cycle == -1
 
     # Geometry changed during optimization, so charges and energies differ
-    q0_c0 = nbo_c0.get_npa_charge(0)
-    q0_last = nbo_last.get_npa_charge(0)
+    q0_c0 = nbo_c0.npa_charges.set_index('Index')['Charge'][0]
+    q0_last = nbo_last.npa_charges.set_index('Index')['Charge'][0]
     assert not np.isclose(q0_c0, q0_last, atol=1e-3)
 
     e2_max_c0 = nbo_c0.perturbation_theory['E(2)'].max()
@@ -235,10 +205,7 @@ def test_real_nbo_file_and_cycle_selection():
     lps = calc.nbo.get_lone_pairs()
     assert len(lps) > 0
 
-    # Top interactions
-    e2 = calc.nbo.get_interactions(min_e2=15.0)
-    assert len(e2) > 0
-    assert e2.iloc[0]['E(2)'] >= 15.0
+    assert calc.nbo.perturbation_theory['E(2)'].max() >= 15.0
 
 
 def test_gaussian_nbo_mock(tmp_path):
@@ -285,7 +252,7 @@ def test_gaussian_nbo_mock(tmp_path):
     calc = GaussianCalculation(str(mock_log))
     assert calc.has_nbo() is True
     assert calc.nbo is not None
-    assert np.isclose(calc.nbo.get_npa_charge(0), -0.30)
+    assert np.isclose(calc.nbo.npa_charges.set_index('Index')['Charge'][0], -0.30)
     assert len(calc.nbo.get_bonds(atom1=0, atom2=1)) == 2
 
 

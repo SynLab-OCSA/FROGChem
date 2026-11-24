@@ -233,10 +233,6 @@ class CreateCrestInput(CLICommand, name='frog-crest'):
 
 
 # backward compat
-def parse_args():
-    return CreateCrestInput().build_parser().parse_args()
-
-
 def main():
     CreateCrestInput().main()
 

@@ -37,7 +37,7 @@ from frogchem.printer import print_error, print_warning, print_info
 
 from frogchem.cli.base import CLICommand, Guide, Output, ENSEMBLE_WEIGHTS
 
-HARTREE_TO_KCAL = 627.509474
+from frogchem.chemistry import HARTREE_TO_KCAL
 
 
 class CalcRrho(CLICommand, name='frog-rrho'):
@@ -54,7 +54,6 @@ class CalcRrho(CLICommand, name='frog-rrho'):
     """
     category = 'thermo'
     supports_ensemble = True
-    _auto_ensemble_average = False
     outputs = [
         Output('table', 'Thermodynamics', 'One row per file: E, E+ZPVE, H, TS, G, G-E (Eh), imaginary '
                                           'frequencies (cm⁻¹) and Boltz % with -b'),
@@ -160,7 +159,6 @@ class CalcRrho(CLICommand, name='frog-rrho'):
             try:
                 calc = load_calculation(file)
             except Exception as e:
-                self._parse_errors.append({'file': file, 'error_type': type(e).__name__, 'message': str(e)})
                 print_warning(f"Skipping {file}: {e}")
                 continue
 
@@ -288,9 +286,6 @@ class CalcRrho(CLICommand, name='frog-rrho'):
                     title="Ensemble-Averaged Thermodynamics (Boltzmann Weighted)",
                     floatfmt=['s', '.6f', '.2f'])
 
-
-def parse_args():
-    return CalcRrho().build_parser().parse_args()
 
 
 def main():

@@ -1,6 +1,6 @@
 import logging
 
-from frogchem.exceptions import ParseError, ErrorManifest
+from frogchem.exceptions import ParseError
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,6 @@ class BaseParser:
     def __init__(self, fname):
         self.fname = fname
         self._parsed = False
-        self.errors = ErrorManifest()
 
     def __getattr__(self, name):
         if name.startswith('_') or name in ('fname', 'reg'):
@@ -31,14 +30,9 @@ class BaseParser:
             return
         self._parsed = True
 
-        fname_str = str(self.fname)
-        if fname_str.endswith('.gz'):
-            import gzip
-            with gzip.open(self.fname, 'rt', encoding='utf-8', errors='replace') as f:
-                self.fl = f.read()
-        else:
-            with open(self.fname, 'r', encoding='utf-8', errors='replace') as f:
-                self.fl = f.read()
+        from frogchem.io import open_text
+        with open_text(self.fname) as f:
+            self.fl = f.read()
 
         try:
             self._parse_file()

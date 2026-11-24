@@ -13,7 +13,7 @@ from frogchem.printer import print_info, print_warning
 
 logger = logging.getLogger(__name__)
 
-_AU = 1.8897259886  # Å → Bohr
+from frogchem.chemistry import ANGSTROM_TO_BOHR as _AU
 
 # Cartesian functions (Gaussian 6D/10F): code -> (a, b, c) exponents of x^a y^b z^c
 _CART_EXP = {code: CARTESIAN_EXPONENTS[name] for name, code in CARTESIAN_CODES.items()}

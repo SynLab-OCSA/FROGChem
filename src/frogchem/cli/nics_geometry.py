@@ -109,9 +109,6 @@ class NicsGeometry(CLICommand, name='frog-nics'):
                 self.saved(path, 'coordinates')
 
 
-def parse_args():
-    return NicsGeometry().build_parser().parse_args()
-
 
 def main():
     NicsGeometry().main()

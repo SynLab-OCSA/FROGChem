@@ -264,7 +264,6 @@ class NboParser(CLICommand, name='frog-nbo'):
 
     category = 'parsing'
     supports_ensemble = True
-    _auto_ensemble_average = False
     outputs = [
         Output('table', 'Natural Population Summary (<file>)', 'Total, Lewis and non-Lewis populations',
                when='--summary/--all'),
@@ -929,9 +928,6 @@ class NboParser(CLICommand, name='frog-nbo'):
 
 
 # backward compat
-def parse_args():
-    return NboParser().build_parser().parse_args()
-
 def main():
     NboParser().main()
 
