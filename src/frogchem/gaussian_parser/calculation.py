@@ -13,6 +13,7 @@ from frogchem.gaussian_parser.hessian import (
 from frogchem.gaussian_parser.tddft import parse_uv, parse_ecd, parse_tddft_states
 from frogchem.gaussian_parser.population import parse_npa_charges, parse_atomic_charges
 from frogchem.gaussian_parser.orbitals import get_MOs, get_overlap, get_basis_coefficients
+from frogchem.basis_exchange import basis_from_bse
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +106,12 @@ class GaussianCalculation(BaseParser):
         except ParseError as e:
             self.errors.add(str(self.fname), 'basis', str(e), section='orbitals')
             logger.warning(f'{self.fname}: {e}')
+            return
+        # No gfinput: rebuild the standard basis ('Standard basis: def2SVP (5D, 7F)') from the Basis Set Exchange
+        if self.basis_coeff is None:
+            name = re.findall(r'Standard basis:\s+(\S+)', self.fl)
+            if name:
+                self.basis_coeff = basis_from_bse(self, name[-1])
 
     @property
     def n_electrons(self):

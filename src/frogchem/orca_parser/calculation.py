@@ -6,6 +6,7 @@ from frogchem.parser_base import BaseParser
 from frogchem.exceptions import ParseError
 from frogchem.chemistry import get_atomic_weights
 from frogchem.orca_parser.regex_ORCA import REGEXS
+from frogchem.basis_exchange import basis_from_bse
 from frogchem.orca_parser.orbitals import get_MOs_coefficients, get_MOs_energies, get_basis_coefficients
 from frogchem.orca_parser.hessian import get_freq, get_normal_modes, get_hessian_graphs_impulses, to_displacements
 from frogchem.orca_parser.opt import get_geom, get_energy_decomposition
@@ -79,6 +80,12 @@ class Calculation(BaseParser):
                     self.alpha_coeff, self.beta_coeff = self.orbital_coefficients[:, :idx], self.orbital_coefficients[:, idx:]
             except Exception as e:
                 raise ParseError(f"Failed to parse molecular orbitals in {self.fname}: {e}") from e
+
+            # No ! PrintBasis: rebuild the (named) basis from the Basis Set Exchange
+            if not self.__dict__.get('basis_coeff') and self.orbital_coefficients is not None:
+                basis = basis_from_bse(self, self.basis_set)
+                if basis is not None:
+                    self.basis_coeff = basis
 
         if 'freq' in self.__dict__:
             try:

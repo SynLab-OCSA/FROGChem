@@ -52,6 +52,7 @@ dependencies = [
     "aimnet[ase] @ git+https://github.com/isayevlab/aimnetcentral.git",
     "mdtraj",
     "pyyaml",
+    "basis_set_exchange",
 ]
 
 [project.optional-dependencies]
