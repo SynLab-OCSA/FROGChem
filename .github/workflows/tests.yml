@@ -8,11 +8,13 @@ on:
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
+    # macOS hosted runners are often not assigned to this repository ("The job was not acquired by
+    # Runner of type hosted"): those jobs were cancelled after 15 min and failed every run
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
         python-version: [ "3.11", "3.12" ]
 
     steps:
@@ -27,6 +29,8 @@ jobs:
       - name: Install FROG and dependencies
         run: |
           python -m pip install --upgrade pip
+          # CPU-only torch (needed by aimnet): the default CUDA wheels filled the runner disk
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -e .
           pip install pytest
 
